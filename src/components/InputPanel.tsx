@@ -1,26 +1,88 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 interface Props {
   onSubmit: (lat: number, lng: number, photoUrl?: string) => void
 }
 
-const LAGOS_BOUNDS = { latMin: 6.0, latMax: 7.0, lngMin: 2.5, lngMax: 4.5 }
+const LAGOS_CENTER = { lat: 6.5244, lng: 3.3792 }
 
-function isValidLagos(lat: number, lng: number): boolean {
-  return lat >= LAGOS_BOUNDS.latMin && lat <= LAGOS_BOUNDS.latMax &&
-         lng >= LAGOS_BOUNDS.lngMin && lng <= LAGOS_BOUNDS.lngMax
+declare global {
+  interface Window {
+    google: any
+    initGoogleMaps: () => void
+  }
 }
 
 export default function InputPanel({ onSubmit }: Props) {
-  const [tab, setTab] = useState<'photo' | 'gps' | 'coord'>('photo')
-  const [coordInput, setCoordInput] = useState('')
-  const [error, setError] = useState('')
+  const [mode, setMode] = useState<'search' | 'gps' | 'photo'>('search')
+  const [searchVal, setSearchVal] = useState('')
+  const [selectedPlace, setSelectedPlace] = useState<{ lat: number; lng: number; name: string } | null>(null)
   const [gpsLoading, setGpsLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [mapsReady, setMapsReady] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const autocompleteRef = useRef<any>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
-  // --- GPS detect ---
+  const LAGOS_BOUNDS = { latMin: 6.0, latMax: 7.0, lngMin: 2.5, lngMax: 4.5 }
+  const isValidLagos = (lat: number, lng: number) =>
+    lat >= LAGOS_BOUNDS.latMin && lat <= LAGOS_BOUNDS.latMax &&
+    lng >= LAGOS_BOUNDS.lngMin && lng <= LAGOS_BOUNDS.lngMax
+
+  // Load Google Maps Places API
+  useEffect(() => {
+    const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
+    if (!apiKey || typeof window === 'undefined') return
+
+    window.initGoogleMaps = () => {
+      setMapsReady(true)
+    }
+
+    if (window.google?.maps?.places) {
+      setMapsReady(true)
+      return
+    }
+
+    const script = document.createElement('script')
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places&callback=initGoogleMaps`
+    script.async = true
+    document.head.appendChild(script)
+
+    return () => {
+      document.head.removeChild(script)
+    }
+  }, [])
+
+  // Init autocomplete once Maps is ready and input is in DOM
+  useEffect(() => {
+    if (!mapsReady || !inputRef.current || mode !== 'search') return
+    if (autocompleteRef.current) return
+
+    const bounds = new window.google.maps.LatLngBounds(
+      new window.google.maps.LatLng(6.0, 2.5),
+      new window.google.maps.LatLng(7.0, 4.5)
+    )
+
+    autocompleteRef.current = new window.google.maps.places.Autocomplete(inputRef.current, {
+      bounds,
+      strictBounds: false,
+      componentRestrictions: { country: 'ng' },
+      fields: ['geometry', 'formatted_address', 'name'],
+    })
+
+    autocompleteRef.current.addListener('place_changed', () => {
+      const place = autocompleteRef.current.getPlace()
+      if (!place?.geometry?.location) return
+      const lat = place.geometry.location.lat()
+      const lng = place.geometry.location.lng()
+      setSelectedPlace({ lat, lng, name: place.formatted_address || place.name })
+      setSearchVal(place.formatted_address || place.name || '')
+      setError('')
+    })
+  }, [mapsReady, mode])
+
   const handleGPS = () => {
     setError('')
     setGpsLoading(true)
@@ -29,7 +91,7 @@ export default function InputPanel({ onSubmit }: Props) {
         setGpsLoading(false)
         const { latitude: lat, longitude: lng } = pos.coords
         if (!isValidLagos(lat, lng)) {
-          setError('Location detected outside Lagos. Please verify your coordinates.')
+          setError('Location detected outside Lagos.')
           return
         }
         onSubmit(lat, lng)
@@ -37,15 +99,14 @@ export default function InputPanel({ onSubmit }: Props) {
       () => {
         setGpsLoading(false)
         setError('Could not detect location. Allow location access and try again.')
-      }
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
     )
   }
 
-  // --- Photo upload ---
   const handlePhoto = async (file: File) => {
     setError('')
     try {
-      // Dynamic import so ExifReader only loads client-side
       const ExifReader = (await import('exifreader')).default
       const tags = await ExifReader.load(file)
       const lat = tags['GPSLatitude']?.description
@@ -54,180 +115,141 @@ export default function InputPanel({ onSubmit }: Props) {
         const latNum = parseFloat(lat as string)
         const lngNum = parseFloat(lng as string)
         if (!isValidLagos(latNum, lngNum)) {
-          setError('GPS coordinates in photo are outside Lagos.')
+          setError('GPS in photo is outside Lagos. Use address search instead.')
           return
         }
         onSubmit(latNum, lngNum)
       } else {
-        setError('No GPS data found in photo. Try GPS detect or enter coordinates manually.')
+        setError('No GPS data in this photo. Most WhatsApp photos lose GPS — use address search instead.')
       }
     } catch {
-      setError('Could not read photo. Try another method.')
+      setError('Could not read photo. Use address search instead.')
     }
   }
 
-  // --- Coordinate parse ---
-  const parseCoordinates = (input: string): [number, number] | null => {
-    const clean = input.trim()
-    // Decimal: 6.5957, 3.3381
-    const decimal = clean.match(/^(-?\d+\.?\d*)[,\s]+(-?\d+\.?\d*)$/)
-    if (decimal) return [parseFloat(decimal[1]), parseFloat(decimal[2])]
-    // DMS: 6°35'44.5"N 3°20'17.2"E
-    const dms = clean.match(/(\d+)°(\d+)'([\d.]+)"([NS])\s+(\d+)°(\d+)'([\d.]+)"([EW])/)
-    if (dms) {
-      const lat = parseInt(dms[1]) + parseInt(dms[2]) / 60 + parseFloat(dms[3]) / 3600
-      const lng = parseInt(dms[5]) + parseInt(dms[6]) / 60 + parseFloat(dms[7]) / 3600
-      return [dms[4] === 'S' ? -lat : lat, dms[8] === 'W' ? -lng : lng]
-    }
-    return null
-  }
-
-  const handleCoordSubmit = async () => {
-    setError('')
-    const parsed = parseCoordinates(coordInput)
-    if (parsed) {
-      const [lat, lng] = parsed
-      if (!isValidLagos(lat, lng)) {
-        setError('Coordinates are outside Lagos bounds (lat 6–7, lng 2.5–4.5).')
-        return
-      }
-      onSubmit(lat, lng)
+  const handleSubmit = () => {
+    if (!selectedPlace) {
+      setError('Please select a location from the dropdown suggestions.')
       return
     }
-    // If not parseable as coords, treat as address — geocode via API
-    if (coordInput.length > 5) {
-      try {
-        const res = await fetch(`/api/geocode?address=${encodeURIComponent(coordInput + ', Lagos, Nigeria')}`)
-        const data = await res.json()
-        if (data.lat && data.lng) {
-          if (!isValidLagos(data.lat, data.lng)) {
-            setError('Address resolved outside Lagos.')
-            return
-          }
-          onSubmit(data.lat, data.lng)
-        } else {
-          setError('Could not find this address. Try decimal coordinates instead.')
-        }
-      } catch {
-        setError('Geocoding failed. Check your connection and try again.')
-      }
-    } else {
-      setError('Enter coordinates or a full Lagos address.')
+    if (!isValidLagos(selectedPlace.lat, selectedPlace.lng)) {
+      setError('This location is outside Lagos. Please search for a Lagos address.')
+      return
     }
+    onSubmit(selectedPlace.lat, selectedPlace.lng)
   }
 
-  const tabStyle = (t: string) => ({
-    flex: 1, padding: '8px 4px',
-    background: tab === t ? '#f3f3f0' : 'transparent',
-    border: 'none',
-    fontFamily: 'Syne, sans-serif',
-    fontSize: 11, fontWeight: 500,
-    color: tab === t ? '#111' : '#888',
-    cursor: 'pointer',
-    borderRight: '0.5px solid #e5e5e0',
-  } as React.CSSProperties)
-
   return (
-    <div style={{ padding: '1.25rem 1.5rem' }}>
-      {/* Tabs */}
-      <div style={{ display: 'flex', border: '0.5px solid #ddd', borderRadius: 8, overflow: 'hidden', marginBottom: '1.25rem' }}>
-        <button style={tabStyle('photo')} onClick={() => setTab('photo')}>Photo upload</button>
-        <button style={tabStyle('gps')} onClick={() => setTab('gps')}>GPS detect</button>
-        <button style={{ ...tabStyle('coord'), borderRight: 'none' }} onClick={() => setTab('coord')}>Coordinates</button>
-      </div>
+    <div style={{ padding: '1rem 1.5rem 1.25rem' }}>
 
-      {/* Photo tab */}
-      {tab === 'photo' && (
-        <div>
-          <input type="file" accept="image/*" ref={fileRef} style={{ display: 'none' }}
-            onChange={e => e.target.files?.[0] && handlePhoto(e.target.files[0])} />
-          <div onClick={() => fileRef.current?.click()} style={{
-            border: '1.5px dashed #ccc', borderRadius: 12, padding: '2rem 1rem',
-            textAlign: 'center', cursor: 'pointer', marginBottom: '1rem'
-          }}>
-            <div style={{
-              width: 40, height: 40, background: '#E1F5EE', borderRadius: 10,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 0.75rem'
-            }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="1.5">
-                <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
-              </svg>
-            </div>
-            <div style={{ fontSize: 14, fontWeight: 500, marginBottom: 4 }}>Drop photo or tap to upload</div>
-            <div style={{ fontSize: 12, color: '#888' }}>EXIF GPS extracted automatically · Works with photos taken on-site</div>
-          </div>
-          <p style={{ fontSize: 12, color: '#888', lineHeight: 1.7, marginBottom: '1rem' }}>
-            Abroad? Ask your rep on the land to take a photo and WhatsApp it to you. Upload it here — GPS coordinates are extracted from the image metadata automatically.
-          </p>
-          <button onClick={() => fileRef.current?.click()} style={primaryBtn}>Choose photo →</button>
-        </div>
-      )}
-
-      {/* GPS tab */}
-      {tab === 'gps' && (
-        <div>
-          <button onClick={handleGPS} disabled={gpsLoading} style={{
-            width: '100%', padding: 12, background: '#f3f3f0',
-            border: '0.5px solid #ddd', borderRadius: 8,
-            fontFamily: 'Syne, sans-serif', fontSize: 13, fontWeight: 500,
-            cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-            marginBottom: '1rem'
-          }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="1.5">
-              <circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/>
+      {/* PRIMARY: Address search */}
+      <div style={{ marginBottom: '1rem' }}>
+        <div style={{ position: 'relative' }}>
+          <div style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
             </svg>
-            {gpsLoading ? 'Detecting…' : 'Detect my location'}
-          </button>
-          <p style={{ fontSize: 12, color: '#888', lineHeight: 1.7, marginBottom: '1rem' }}>
-            Must be physically on the land. Accuracy: ±2–10m on mobile.<br/>
-            Abroad? Share this page link with your rep — they tap the button and send you the result.
-          </p>
-          <button onClick={handleGPS} disabled={gpsLoading} style={primaryBtn}>
-            {gpsLoading ? 'Detecting location…' : 'Detect & run verification →'}
-          </button>
-        </div>
-      )}
-
-      {/* Coordinates tab */}
-      {tab === 'coord' && (
-        <div>
+          </div>
           <input
+            ref={inputRef}
             type="text"
-            value={coordInput}
-            onChange={e => setCoordInput(e.target.value)}
-            placeholder="6.5957, 3.3381"
+            value={searchVal}
+            onChange={e => { setSearchVal(e.target.value); setSelectedPlace(null) }}
+            placeholder="Search: Lekki Phase 1, Chevron Drive, Ajah..."
             style={{
-              width: '100%', padding: '10px 12px',
-              border: '0.5px solid #ddd', borderRadius: 8,
-              fontFamily: 'DM Mono, monospace', fontSize: 13,
-              marginBottom: '0.75rem', outline: 'none'
+              width: '100%', padding: '13px 12px 13px 38px',
+              border: selectedPlace ? '1.5px solid #0F6E56' : '1.5px solid #ddd',
+              borderRadius: 10, fontSize: 14,
+              fontFamily: 'Syne, sans-serif',
+              outline: 'none', transition: 'border-color 0.2s',
+              background: '#fff',
             }}
           />
-          <div style={{ fontSize: 11, fontFamily: 'DM Mono, monospace', color: '#aaa', lineHeight: 1.9, marginBottom: '1rem' }}>
-            Accepts: 6.5957, 3.3381<br/>
-            6°35'44"N 3°20'17"E<br/>
-            Plot 14 Admiralty Way, Lekki Phase 1
-          </div>
-          <button onClick={handleCoordSubmit} style={primaryBtn}>Run verification →</button>
+          {selectedPlace && (
+            <div style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="2.5">
+                <path d="M20 6L9 17l-5-5"/>
+              </svg>
+            </div>
+          )}
         </div>
-      )}
 
-      {/* Error */}
+        {selectedPlace && (
+          <div style={{ marginTop: 8, padding: '8px 12px', background: '#E1F5EE', borderRadius: 8, display: 'flex', gap: 8, alignItems: 'center' }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="#0F6E56">
+              <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
+            </svg>
+            <span style={{ fontSize: 11, color: '#0F6E56', fontFamily: 'DM Mono, monospace', flex: 1 }}>{selectedPlace.name}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Run button */}
+      <button
+        onClick={handleSubmit}
+        disabled={!selectedPlace}
+        style={{
+          width: '100%', padding: 14,
+          background: selectedPlace ? '#0F6E56' : '#ccc',
+          border: 'none', borderRadius: 10,
+          fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 700,
+          color: '#fff', cursor: selectedPlace ? 'pointer' : 'not-allowed',
+          transition: 'background 0.2s', marginBottom: '1rem',
+        }}
+      >
+        {selectedPlace ? 'Run 6 checks →' : 'Search for a location above'}
+      </button>
+
+      {/* SECONDARY OPTIONS */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: error ? '0.75rem' : 0 }}>
+        <button
+          onClick={handleGPS}
+          disabled={gpsLoading}
+          style={{
+            flex: 1, padding: '10px 8px',
+            background: '#f8f8f5', border: '0.5px solid #e0e0dc',
+            borderRadius: 8, fontFamily: 'Syne, sans-serif',
+            fontSize: 12, fontWeight: 500, color: '#555',
+            cursor: 'pointer', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', gap: 6,
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="2">
+            <circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>
+          </svg>
+          {gpsLoading ? 'Detecting…' : 'Use my GPS'}
+        </button>
+
+        <button
+          onClick={() => fileRef.current?.click()}
+          style={{
+            flex: 1, padding: '10px 8px',
+            background: '#f8f8f5', border: '0.5px solid #e0e0dc',
+            borderRadius: 8, fontFamily: 'Syne, sans-serif',
+            fontSize: 12, fontWeight: 500, color: '#555',
+            cursor: 'pointer', display: 'flex', alignItems: 'center',
+            justifyContent: 'center', gap: 6,
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="2">
+            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/>
+          </svg>
+          Photo GPS
+        </button>
+      </div>
+
+      <input type="file" accept="image/*" ref={fileRef} style={{ display: 'none' }}
+        onChange={e => e.target.files?.[0] && handlePhoto(e.target.files[0])} />
+
+      <p style={{ fontSize: 11, color: '#bbb', lineHeight: 1.6, marginTop: 8, fontFamily: 'DM Mono, monospace' }}>
+        GPS & Photo work best when physically on the land. For diaspora: use address search.
+      </p>
+
       {error && (
-        <div style={{
-          marginTop: '1rem', padding: '10px 12px', background: '#FCEBEB',
-          border: '0.5px solid #A32D2D', borderRadius: 8,
-          fontSize: 12, color: '#791F1F', lineHeight: 1.6
-        }}>
+        <div style={{ marginTop: '0.75rem', padding: '10px 12px', background: '#FCEBEB', border: '0.5px solid #A32D2D', borderRadius: 8, fontSize: 12, color: '#791F1F', lineHeight: 1.6 }}>
           {error}
         </div>
       )}
     </div>
   )
-}
-
-const primaryBtn: React.CSSProperties = {
-  width: '100%', padding: 13, background: '#0F6E56', border: 'none',
-  borderRadius: 8, fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 700,
-  color: '#fff', cursor: 'pointer', letterSpacing: '0.3px'
 }
