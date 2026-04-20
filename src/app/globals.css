@@ -1,0 +1,33 @@
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700&family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --teal-50: #E1F5EE;
+  --teal-100: #9FE1CB;
+  --teal-600: #0F6E56;
+  --teal-800: #085041;
+  --amber-50: #FAEEDA;
+  --amber-100: #FAC775;
+  --amber-600: #854F0B;
+  --amber-800: #633806;
+  --red-50: #FCEBEB;
+  --red-100: #F7C1C1;
+  --red-600: #A32D2D;
+  --red-800: #791F1F;
+  --green-50: #EAF3DE;
+  --green-100: #C0DD97;
+  --green-600: #3B6D11;
+  --green-800: #27500A;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Syne', sans-serif;
+  background: #f9f9f7;
+}
