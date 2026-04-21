@@ -1,4 +1,5 @@
 'use client'
+import React from 'react'
 import { useRouter } from 'next/navigation'
 import InputPanel from '@/components/InputPanel'
 
@@ -134,8 +135,8 @@ export default function Home() {
               { n: '06', name: 'Fraud zone & Omo Onile', desc: 'Curated database of known Lagos fraud zones from court records and verified lawyer submissions. 500m radius check.', tag: 'ALERT', tc: '#991B1B', bg: '#FEF2F2' },
             ].map(c => (
               <div key={c.n} style={{ background: '#fff', borderRadius: 14, border: '1px solid #E5E7EB', padding: '1.25rem 1.5rem', transition: 'box-shadow 0.2s', cursor: 'default' }}
-                onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 8px 30px rgba(0,0,0,0.08)')}
-                onMouseLeave={e => (e.currentTarget.style.boxShadow = 'none')}>
+                onMouseEnter={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = '0 8px 30px rgba(0,0,0,0.08)' }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.boxShadow = 'none' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
                   <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono', monospace", color: '#D1D5DB', fontWeight: 500 }}>{c.n}</span>
                   <span style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace", padding: '3px 8px', borderRadius: 5, background: c.bg, color: c.tc, fontWeight: 600 }}>{c.tag}</span>
@@ -294,7 +295,7 @@ export default function Home() {
               { s: '7', title: 'Due diligence on the vendor', desc: 'Verify the seller\'s identity documents. If a company, search at CAC. Check for outstanding court orders or judgements against the vendor.', tag: 'VERIFY' },
               { s: '8', title: 'Insist on C of O or Governor\'s Consent', desc: 'Minimum acceptable title: Certificate of Occupancy or Governor\'s Consent. Reject Deed of Assignment alone without an underlying C of O.', tag: 'TITLE' },
             ].map((st, i) => (
-              <div key={st.s} style={{ display: 'flex', gap: 0, borderBottom: i < 7 ? '1px solid #F3F4F6' : 'none', background: st.hi ? '#F0FDF4' : '#fff', padding: '1.25rem 1.5rem', alignItems: 'flex-start', gap: 16 }}>
+              <div key={st.s} style={{ display: 'flex', gap: 16, borderBottom: i < 7 ? '1px solid #F3F4F6' : 'none', background: st.hi ? '#F0FDF4' : '#fff', padding: '1.25rem 1.5rem', alignItems: 'flex-start' }}>
                 <div style={{ width: 32, height: 32, borderRadius: '50%', background: st.hi ? '#0A5C45' : '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: st.hi ? '#fff' : '#9CA3AF', fontSize: 13, fontWeight: 700, fontFamily: "'JetBrains Mono', monospace" }}>
                   {st.hi ? '✓' : st.s}
                 </div>
