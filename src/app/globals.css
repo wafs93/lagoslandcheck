@@ -1,33 +1,48 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;700&family=Instrument+Serif:ital@0;1&family=DM+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Lora:ital,wght@0,400;0,600;1,400;1,600&family=JetBrains+Mono:wght@400;500&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --teal-50: #E1F5EE;
-  --teal-100: #9FE1CB;
-  --teal-600: #0F6E56;
-  --teal-800: #085041;
-  --amber-50: #FAEEDA;
-  --amber-100: #FAC775;
-  --amber-600: #854F0B;
-  --amber-800: #633806;
-  --red-50: #FCEBEB;
-  --red-100: #F7C1C1;
-  --red-600: #A32D2D;
-  --red-800: #791F1F;
-  --green-50: #EAF3DE;
-  --green-100: #C0DD97;
-  --green-600: #3B6D11;
-  --green-800: #27500A;
+  --green: #0A5C45;
+  --green-mid: #0F7A5A;
+  --green-light: #12A375;
+  --green-glow: rgba(10,92,69,0.15);
+  --teal: #5DCAA5;
+  --teal-pale: #E8F7F1;
+  --amber: #E8A020;
+  --red: #C0392B;
+  --ink: #0D1117;
+  --ink-2: #1A2332;
+  --text: #111827;
+  --text-2: #4B5563;
+  --text-3: #9CA3AF;
+  --border: #E5E7EB;
+  --border-2: #F3F4F6;
+  --surface: #FFFFFF;
+  --surface-2: #F9FAFB;
+  --surface-3: #F3F4F6;
 }
 
-* {
-  box-sizing: border-box;
-}
+html { scroll-behavior: smooth; }
+body { font-family: 'Syne', sans-serif; background: var(--surface); color: var(--text); -webkit-font-smoothing: antialiased; }
 
-body {
-  font-family: 'Syne', sans-serif;
-  background: #f9f9f7;
-}
+@keyframes fade-up { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+@keyframes fade-in { from { opacity:0; } to { opacity:1; } }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.15} }
+@keyframes pulse-pin { 0%,100%{transform:scale(1);opacity:0.5} 50%{transform:scale(1.8);opacity:0} }
+@keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-4px)} }
+@keyframes twinkle { 0%,100%{opacity:0.2} 50%{opacity:0.8} }
+@keyframes scan { 0%{top:0%} 100%{top:100%} }
+
+.fade-up { animation: fade-up 0.6s ease both; }
+.fade-up-1 { animation-delay: 0.1s; }
+.fade-up-2 { animation-delay: 0.2s; }
+.fade-up-3 { animation-delay: 0.3s; }
+.fade-up-4 { animation-delay: 0.4s; }
+
+/* Google Places */
+.pac-container { border-radius:10px!important; border:1px solid var(--border)!important; box-shadow:0 8px 30px rgba(0,0,0,0.1)!important; font-family:'Syne',sans-serif!important; margin-top:6px!important; overflow:hidden!important; }
+.pac-item { padding:10px 14px!important; font-size:13px!important; cursor:pointer!important; border-top:0.5px solid var(--border-2)!important; color:var(--text)!important; }
+.pac-item:hover,.pac-item-selected { background:var(--teal-pale)!important; }
+.pac-matched { color:var(--green)!important; font-weight:600!important; }
+.pac-icon { display:none!important; }
