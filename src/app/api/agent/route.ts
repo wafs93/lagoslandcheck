@@ -128,16 +128,41 @@ const tools: OpenAI.Chat.ChatCompletionTool[] = [
 
 async function geocodeAddress(address: string) {
   try {
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address + ', Lagos, Nigeria')}&key=${process.env.GOOGLE_MAPS_API_KEY}`
-    const res = await fetch(url)
-    const data = await res.json()
-    if (data.status === 'OK' && data.results.length > 0) {
-      const { lat, lng } = data.results[0].geometry.location
-      return { success: true, lat, lng, formatted: data.results[0].formatted_address }
+    // Clean up common Nigerian address typos and abbreviations
+    const cleanAddress = address
+      .replace(/\b(\d+)(nc|nd|rd|st|th)\b/gi, '$1') // "1nc" → "1", "11nc" → "11"  
+      .replace(/\bno\b\.?\s*/gi, '') // remove "No." prefix
+      .replace(/\bplot\b\.?\s*/gi, 'Plot ') // normalize "plot"
+      .replace(/\bstr\b/gi, 'Street')
+      .replace(/\bave\b/gi, 'Avenue')
+      .replace(/\brd\b/gi, 'Road')
+      .replace(/\bcl\b/gi, 'Close')
+      .trim()
+
+    // Try multiple address variations
+    const attempts = [
+      cleanAddress + ', Lagos, Nigeria',
+      address + ', Lagos, Nigeria', // original
+      // Strip house number and try just street
+      address.replace(/^\d+[a-z]?\s+/i, '') + ', Lagos, Nigeria',
+    ]
+
+    for (const attempt of attempts) {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(attempt)}&key=${process.env.GOOGLE_MAPS_API_KEY}`
+      const res = await fetch(url)
+      const data = await res.json()
+      if (data.status === 'OK' && data.results.length > 0) {
+        const { lat, lng } = data.results[0].geometry.location
+        // Validate it's in Lagos bounds
+        if (lat >= 6.0 && lat <= 7.0 && lng >= 2.5 && lng <= 4.5) {
+          return { success: true, lat, lng, formatted: data.results[0].formatted_address }
+        }
+      }
     }
-    return { success: false, error: 'Address not found on Google Maps' }
+
+    return { success: false, error: 'Address not found. Please share a Google Maps pin link by: opening Google Maps, long-pressing the exact location, and sharing the link.' }
   } catch {
-    return { success: false, error: 'Geocoding service unavailable' }
+    return { success: false, error: 'Geocoding service unavailable. Please share coordinates or a Google Maps pin link.' }
   }
 }
 
