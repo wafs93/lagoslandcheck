@@ -36,7 +36,10 @@ export default function Home() {
           <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
             <a href="#how" style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', textDecoration: 'none' }}>How it works</a>
             <a href="#guide" style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', textDecoration: 'none' }}>Buyer guide</a>
-            <a href="#verify" style={{ fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', background: '#0A5C45', padding: '7px 16px', borderRadius: 8, border: '1px solid rgba(93,202,165,0.3)' }}>Verify land →</a>
+            <a href="/agent" style={{ fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', background: '#0A5C45', padding: '7px 16px', borderRadius: 8, border: '1px solid rgba(93,202,165,0.3)', display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#5DCAA5', animation: 'blink 1.5s infinite', display: 'inline-block' }}/>
+              AI Agent →
+            </a>
           </div>
         </nav>
 
@@ -69,11 +72,12 @@ export default function Home() {
           </div>
 
           <div className="fade-up fade-up-4" style={{ display: 'flex', gap: 12 }}>
-            <a href="#verify" style={{ padding: '13px 28px', background: '#0A5C45', border: 'none', borderRadius: 10, fontSize: 14, fontWeight: 700, color: '#fff', textDecoration: 'none', cursor: 'pointer', display: 'inline-block' }}>
-              Verify a property →
+            <a href="/agent" style={{ padding: '13px 28px', background: '#0A5C45', border: '1px solid rgba(93,202,165,0.3)', borderRadius: 10, fontSize: 14, fontWeight: 700, color: '#fff', textDecoration: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#5DCAA5', animation: 'blink 1.5s infinite', display: 'inline-block' }}/>
+              Talk to the AI Agent →
             </a>
-            <a href="#how" style={{ padding: '13px 24px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.7)', textDecoration: 'none', display: 'inline-block' }}>
-              See how it works
+            <a href="#verify" style={{ padding: '13px 24px', background: 'transparent', border: '1px solid rgba(255,255,255,0.15)', borderRadius: 10, fontSize: 14, fontWeight: 500, color: 'rgba(255,255,255,0.7)', textDecoration: 'none', display: 'inline-block' }}>
+              Quick verify
             </a>
           </div>
         </div>
@@ -270,6 +274,60 @@ export default function Home() {
             <div style={{ background: '#0A1628', padding: '8px 16px', display: 'flex', justifyContent: 'space-between' }}>
               <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: "'JetBrains Mono',monospace" }}>Lagos State · 3,345 km²</span>
               <span style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', fontFamily: "'JetBrains Mono',monospace" }}>Population ~25M</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════
+          SCAM ALERTS
+      ══════════════════════════════════════════ */}
+      <section style={{ background: '#fff', padding: '5rem 1.5rem' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto' }}>
+          <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: '#991B1B', letterSpacing: '1.5px', marginBottom: 8 }}>FRAUD INTELLIGENCE</p>
+          <h2 style={{ fontFamily: "'Lora', serif", fontSize: 'clamp(26px,3.5vw,40px)', fontWeight: 600, lineHeight: 1.15, letterSpacing: '-0.5px', marginBottom: '0.75rem' }}>Common Lagos land scams to know.</h2>
+          <p style={{ fontSize: 14, color: '#6B7280', lineHeight: 1.7, marginBottom: '2.5rem', maxWidth: 520 }}>Know these before you engage any seller or agent. This knowledge alone saves millions.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 12, marginBottom: '2rem' }}>
+            {([
+              { icon: '🏛', title: 'Gazette concealment', risk: 'CRITICAL', riskBg: '#FEF2F2', riskColor: '#991B1B', desc: 'Sellers knowingly sell government-acquired land. Very common along Lekki-Epe corridor and Ibeju-Lekki Free Trade Zone. LagosLandCheck queries all Lagos State Gazettes within 500m.' },
+              { icon: '👥', title: 'Omo Onile extortion', risk: 'HIGH RISK', riskBg: '#FEF2F2', riskColor: '#991B1B', desc: 'Community members demand payment claiming traditional ownership — before or after purchase. Active in Ajah, Ibeju-Lekki, Ikorodu, Badagry. Can return months later threatening demolition.' },
+              { icon: '📋', title: 'Double sale', risk: 'HIGH RISK', riskBg: '#FEF2F2', riskColor: '#991B1B', desc: 'Same plot sold to multiple buyers using photocopies of the same C of O. Seller disappears. One person eventually builds; others lose everything. Only a Land Registry search detects this.' },
+              { icon: '📄', title: 'Forged C of O', risk: 'HIGH RISK', riskBg: '#FEF2F2', riskColor: '#991B1B', desc: 'Fake Certificates of Occupancy with incorrect Lagos State seals, wrong fonts, or smudged signatures. Always verify C of O at Land Registry, Alausa. Never accept a photocopy alone.' },
+              { icon: '📐', title: 'Fake survey plans', risk: 'CAUTION', riskBg: '#FFFBEB', riskColor: '#92400E', desc: 'Survey plans showing beacon numbers that don\'t exist in OSGOF records. Engage a licensed surveyor to verify beacons on-site before any payment.' },
+              { icon: '🚧', title: 'Drainage setback violations', risk: 'CAUTION', riskBg: '#FFFBEB', riskColor: '#92400E', desc: 'LASBCA regulations require 30m setback from primary drainage channels. Many plots in Isale Eko, Surulere, and Ajeromi are within setback zones and legally cannot be built on.' },
+              { icon: '💧', title: 'Floodplain sold as dry land', risk: 'CAUTION', riskBg: '#FFFBEB', riskColor: '#92400E', desc: 'Low-lying land sold as "dry land" that floods seasonally. Common in Badagry, parts of Ikorodu and Epe. Our NIMET flood risk check covers this automatically.' },
+              { icon: '📜', title: 'Deed without C of O', risk: 'CAUTION', riskBg: '#FFFBEB', riskColor: '#92400E', desc: 'Sellers present only a Deed of Assignment — very weak title without an underlying C of O. The original owner retains superior title. Always insist on the root of title before any payment.' },
+            ] as Array<{icon:string;title:string;risk:string;riskBg:string;riskColor:string;desc:string}>).map(s => (
+              <div key={s.title} style={{ background: '#F9FAFB', borderRadius: 14, padding: '1.25rem', border: '1px solid #F3F4F6' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                  <span style={{ fontSize: 22 }}>{s.icon}</span>
+                  <span style={{ fontSize: 9, fontFamily: "'JetBrains Mono', monospace", padding: '3px 8px', borderRadius: 4, background: s.riskBg, color: s.riskColor, fontWeight: 600 }}>{s.risk}</span>
+                </div>
+                <h3 style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 6 }}>{s.title}</h3>
+                <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.65 }}>{s.desc}</p>
+              </div>
+            ))}
+          </div>
+          <div style={{ background: '#0A1628', borderRadius: 16, padding: '1.5rem 2rem' }}>
+            <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: '#5DCAA5', letterSpacing: '1.5px', marginBottom: 8 }}>HIGH-RISK ZONES</p>
+            <h3 style={{ fontFamily: "'Lora', serif", fontSize: 20, color: '#fff', fontWeight: 600, marginBottom: '1.25rem' }}>Areas with elevated fraud or acquisition risk</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 10 }}>
+              {([
+                { zone: 'Ibeju-Lekki corridor', reason: 'Gazette acquisitions — Dangote Refinery & Free Trade Zone', level: 'critical' },
+                { zone: 'Badagry Expressway', reason: 'Road expansion acquisitions + flood risk + Omo Onile', level: 'critical' },
+                { zone: 'Ajah / Abraham Adesanya', reason: 'Active Omo Onile disputes, multiple fraud reports', level: 'high' },
+                { zone: 'Agbado-Oke-Odo', reason: 'Informal titles, drainage risk, rapid development', level: 'high' },
+                { zone: 'Epe township', reason: 'Multiple gazette acquisitions, limited title verification', level: 'high' },
+                { zone: 'Isale Eko drainage', reason: 'Drainage setback violations, historic flood zone', level: 'caution' },
+              ] as Array<{zone:string;reason:string;level:string}>).map(z => (
+                <div key={z.zone} style={{ background: 'rgba(255,255,255,0.05)', borderRadius: 10, padding: '12px 14px', border: `1px solid ${z.level === 'critical' ? 'rgba(226,75,74,0.3)' : z.level === 'high' ? 'rgba(239,159,39,0.3)' : 'rgba(93,202,165,0.2)'}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 5 }}>
+                    <div style={{ width: 6, height: 6, borderRadius: '50%', background: z.level === 'critical' ? '#E24B4A' : z.level === 'high' ? '#EF9F27' : '#5DCAA5', flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, fontWeight: 600, color: '#fff' }}>{z.zone}</span>
+                  </div>
+                  <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', lineHeight: 1.55 }}>{z.reason}</p>
+                </div>
+              ))}
             </div>
           </div>
         </div>
