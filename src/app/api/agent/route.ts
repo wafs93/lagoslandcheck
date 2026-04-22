@@ -208,7 +208,12 @@ async function extractCoordinatesFromInput(input: string) {
 
 async function runVerification(lat: number, lng: number, locationLabel: string, confidence: string) {
   try {
-    const baseUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000'
+    // Use VERCEL_URL in production, fallback to localhost for dev
+    const baseUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : process.env.NEXT_PUBLIC_SUPABASE_URL 
+        ? 'https://lagoslandcheck.vercel.app'
+        : 'http://localhost:3000'
     const res = await fetch(`${baseUrl}/api/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
