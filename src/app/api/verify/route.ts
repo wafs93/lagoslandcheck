@@ -3,48 +3,60 @@ import { supabaseAdmin } from '@/lib/supabase'
 import { CheckResult, VerifyResponse } from '@/lib/types'
 import OpenAI from 'openai'
 
-
 // ─── CHECK 1: Satellite imagery via GPT-4o Vision ────────────────────────────
 async function checkSatellite(lat: number, lng: number): Promise<CheckResult> {
   try {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-    const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=18&size=640x640&maptype=satellite&key=${process.env.GOOGLE_MAPS_API_KEY}`
+    const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=19&size=640x640&maptype=satellite&key=${process.env.GOOGLE_MAPS_API_KEY}`
 
     const response = await openai.chat.completions.create({
       model: 'gpt-4o',
-      max_tokens: 500,
+      max_tokens: 600,
       messages: [{
         role: 'user',
         content: [
-          {
-            type: 'image_url',
-            image_url: { url: mapUrl }
-          },
+          { type: 'image_url', image_url: { url: mapUrl } },
           {
             type: 'text',
-            text: `Analyse this satellite image of land in Lagos, Nigeria at coordinates ${lat}, ${lng}. 
-            Assess: 1) proximity to water bodies or swamp 2) visible encroachment markers 
-            3) land cover type (swamp/built-up/bush/water) 4) any boundary dispute signs 
-            5) road setback violations. 
-            Reply with JSON: { "status": "clear"|"caution"|"critical", "summary": "one sentence", "details": "2-3 sentences" }`
+            text: `You are analysing a satellite image of a location in Lagos, Nigeria at coordinates ${lat}, ${lng}.
+
+Carefully examine this image and determine:
+
+1. LAND TYPE: Is this VACANT/EMPTY land, or is there already a BUILDING or STRUCTURE on it?
+2. STRUCTURE DETAIL: If a building exists, describe it (residential house, commercial building, uncompleted structure, fence/wall only, etc.)
+3. WATER RISK: Any visible water body, swamp, marshy ground, or drainage channel within 100m?
+4. LAND COVER: Describe what you see (sandy/laterite soil, vegetation, concrete, rooftop, etc.)
+5. ACCESS: Is there visible road access to this location?
+
+This is critical for land fraud prevention in Nigeria. Be precise about whether a building exists.
+
+Respond ONLY with valid JSON (no markdown, no backticks):
+{"status":"clear|caution|critical","land_type":"vacant_land|has_building|unclear","structure_description":"description or null","summary":"One clear sentence describing what this location IS","details":"2-3 sentences with full findings"}`
           }
         ]
       }]
     })
 
     const text = response.choices[0].message.content || ''
-    const jsonMatch = text.match(/\{[\s\S]*\}/)
+    const clean = text.replace(/```json|```/g, '').trim()
+    const jsonMatch = clean.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0])
-      return { id: 'satellite', name: 'Satellite imagery', ...parsed }
+      let summary = parsed.summary || ''
+      if (parsed.land_type === 'has_building') {
+        summary = `⚠️ Existing structure detected — ${parsed.structure_description || 'building visible on this parcel'}.`
+      } else if (parsed.land_type === 'vacant_land') {
+        summary = `Vacant land confirmed. ${parsed.summary}`
+      }
+      return { id: 'satellite', name: 'Satellite imagery', status: parsed.status, summary, details: parsed.details }
     }
   } catch (err) {
     console.error('Satellite check error:', err)
   }
   return {
     id: 'satellite', name: 'Satellite imagery', status: 'caution',
-    summary: 'Satellite analysis unavailable.',
-    details: 'Could not retrieve satellite imagery for this coordinate. Verify manually.'
+    summary: 'Satellite analysis could not complete.',
+    details: 'Could not retrieve or analyse satellite imagery. Verify land type physically before any payment.'
   }
 }
 
