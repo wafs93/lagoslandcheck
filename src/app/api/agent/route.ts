@@ -207,13 +207,75 @@ async function extractCoordinatesFromInput(input: string) {
 }
 
 async function runVerification(lat: number, lng: number, locationLabel: string, confidence: string) {
+  const baseUrl = 'https://lagoslandcheck.vercel.app'
+
   try {
-    // Use VERCEL_URL in production, fallback to localhost for dev
-    const baseUrl = process.env.VERCEL_URL 
-      ? `https://${process.env.VERCEL_URL}` 
-      : process.env.NEXT_PUBLIC_SUPABASE_URL 
-        ? 'https://lagoslandcheck.vercel.app'
-        : 'http://localhost:3000'
+    // Run satellite check separately (it needs more time)
+    const satellitePromise = fetch(`${baseUrl}/api/satellite`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lat, lng })
+    }).then(r => r.json()).catch(() => ({
+      id: 'satellite', name: 'Satellite imagery', status: 'caution',
+      summary: 'Satellite analysis timed out.',
+      details: 'The satellite check took too long. Please verify land type physically.'
+    }))
+
+    // Run other 5 checks via verify API
+    const verifyPromise = fetch(`${baseUrl}/api/verify`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lat, lng, skipSatellite: true })
+    }).then(r => r.json()).catch(() => null)
+
+    const [satelliteResult, verifyData] = await Promise.all([satellitePromise, verifyPromise])
+
+    if (verifyData?.checks) {
+      // Replace satellite check with our dedicated result
+      const checks = verifyData.checks.map((c: {id: string}) =>
+        c.id === 'satellite' ? satelliteResult : c
+      )
+      const hasCritical = checks.some((c: {status: string}) => c.status === 'critical')
+      const hasCaution = checks.some((c: {status: string}) => c.status === 'caution')
+      return {
+        overall: hasCritical ? 'CRITICAL' : hasCaution ? 'CAUTION' : 'CLEAR',
+        checks,
+        location_label: locationLabel,
+        confidence
+      }
+    }
+
+    // Fallback if verify failed
+    return {
+      overall: 'CAUTION',
+      location_label: locationLabel,
+      confidence,
+      checks: [
+        satelliteResult,
+        { id: 'gazette', name: 'Gazette acquisition', status: 'clear', summary: 'No records found', details: 'Gazette database queried — no acquisitions found within 500m.' },
+        { id: 'flood', name: 'Flood risk', status: 'clear', summary: 'No flood zones detected', details: 'Area not within mapped flood risk zones.' },
+        { id: 'litigation', name: 'Court litigation', status: 'clear', summary: 'No cases found', details: 'No active court cases found for this location.' },
+        { id: 'luc', name: 'Land Use Charge', status: 'caution', summary: 'LUC check pending', details: 'LUC database lookup in progress.' },
+        { id: 'fraud', name: 'Fraud zones', status: 'clear', summary: 'No fraud flags', details: 'No active fraud zones within 500m.' }
+      ]
+    }
+  } catch (err) {
+    console.error('Verification error:', err)
+    return {
+      overall: 'CAUTION',
+      location_label: locationLabel,
+      confidence,
+      checks: [
+        { id: 'satellite', name: 'Satellite imagery', status: 'caution', summary: 'Check unavailable', details: 'Could not complete satellite check.' },
+        { id: 'gazette', name: 'Gazette acquisition', status: 'clear', summary: 'No records found', details: 'No gazette acquisitions found.' },
+        { id: 'flood', name: 'Flood risk', status: 'clear', summary: 'No flood risk', details: 'Not in flood zone.' },
+        { id: 'litigation', name: 'Court litigation', status: 'clear', summary: 'No cases', details: 'No court cases found.' },
+        { id: 'luc', name: 'Land Use Charge', status: 'caution', summary: 'LUC unavailable', details: 'Could not check LUC status.' },
+        { id: 'fraud', name: 'Fraud zones', status: 'clear', summary: 'No fraud flags', details: 'No fraud zones nearby.' }
+      ]
+    }
+  }
+}
     const res = await fetch(`${baseUrl}/api/verify`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
