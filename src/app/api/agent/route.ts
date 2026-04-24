@@ -276,31 +276,6 @@ async function runVerification(lat: number, lng: number, locationLabel: string, 
     }
   }
 }
-    const res = await fetch(`${baseUrl}/api/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lat, lng })
-    })
-    if (!res.ok) throw new Error('Verify API failed')
-    const data = await res.json()
-    return { ...data, location_label: locationLabel, confidence }
-  } catch {
-    return {
-      overall: 'CAUTION',
-      location_label: locationLabel,
-      confidence,
-      note: 'Database checks pending — Supabase data not yet seeded. Satellite check runs via OpenAI.',
-      checks: [
-        { id: 'satellite', name: 'Satellite imagery', status: 'caution', summary: 'Satellite analysis in progress', details: 'GPT-4o Vision satellite analysis takes a moment.' },
-        { id: 'gazette', name: 'Gazette acquisition', status: 'clear', summary: 'No records found (database empty)', details: 'Gazette database not yet seeded with Lagos records.' },
-        { id: 'flood', name: 'Flood risk', status: 'clear', summary: 'No flood zones loaded yet', details: 'NIMET flood data not yet imported.' },
-        { id: 'litigation', name: 'Court litigation', status: 'clear', summary: 'No cases found', details: 'Court database not yet populated.' },
-        { id: 'luc', name: 'Land Use Charge', status: 'caution', summary: 'LUC database empty', details: 'LUC scraper not yet run.' },
-        { id: 'fraud', name: 'Fraud zones', status: 'clear', summary: 'No fraud flags', details: 'Fraud zone database not yet seeded.' }
-      ]
-    }
-  }
-}
 
 function getAreaIntelligence(area: string) {
   const a = area.toLowerCase()
