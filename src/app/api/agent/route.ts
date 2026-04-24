@@ -241,7 +241,9 @@ async function runVerification(lat: number, lng: number, locationLabel: string, 
         overall: hasCritical ? 'CRITICAL' : hasCaution ? 'CAUTION' : 'CLEAR',
         checks,
         location_label: locationLabel,
-        confidence
+        confidence,
+        lat,
+        lng
       }
     }
 
