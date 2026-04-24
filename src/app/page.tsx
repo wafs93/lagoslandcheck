@@ -157,7 +157,7 @@ export default function Home() {
           LAGOS MAP — illustrated section
       ══════════════════════════════════════════ */}
       <section style={{ background: '#fff', padding: '5rem 1.5rem' }}>
-        <div style={{ maxWidth: 1000, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem', alignItems: 'center' }}>
+        <div style={{ maxWidth: 1000, margin: '0 auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '2rem', alignItems: 'center' }}>
           <div>
             <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: '#0A5C45', letterSpacing: '1.5px', marginBottom: 8 }}>COVERAGE AREA</p>
             <h2 style={{ fontFamily: "'Lora', serif", fontSize: 'clamp(24px,3.5vw,38px)', fontWeight: 600, lineHeight: 1.2, letterSpacing: '-0.5px', marginBottom: '1rem' }}>Every inch of Lagos State covered.</h2>
@@ -409,7 +409,7 @@ export default function Home() {
           <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: '#5DCAA5', letterSpacing: '1.5px', marginBottom: 8 }}>THE DIFFERENCE</p>
           <h2 style={{ fontFamily: "'Lora', serif", fontSize: 'clamp(26px,3.5vw,40px)', fontWeight: 600, color: '#fff', letterSpacing: '-0.5px', marginBottom: '0.75rem' }}>Instant. Not 48 hours.</h2>
           <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginBottom: '3rem', lineHeight: 1.7 }}>Every other land verification service in Nigeria requires 24–48 hours and charges ₦15,000–₦50,000 upfront. LagosLandCheck runs in under 2 minutes.</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 2, borderRadius: 16, overflow: 'hidden', border: '1px solid rgba(255,255,255,0.08)' }}>
             <div style={{ background: 'rgba(255,255,255,0.04)', padding: '2rem' }}>
               <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: 'rgba(255,255,255,0.3)', marginBottom: '1.25rem', letterSpacing: '1px' }}>OTHERS</p>
               {['24–48 hour wait time', 'Manual human review', '₦15,000–₦50,000 upfront', 'No instant red-flag detection', 'Lagos-only, limited coverage'].map(x => (

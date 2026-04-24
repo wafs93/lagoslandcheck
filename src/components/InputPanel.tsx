@@ -17,6 +17,7 @@ export default function InputPanel({ onSubmit }: Props) {
   const [searchVal, setSearchVal] = useState('')
   const [place, setPlace] = useState<{lat:number;lng:number;name:string}|null>(null)
   const [gpsState, setGpsState] = useState<'idle'|'loading'>('idle')
+  const [searchState, setSearchState] = useState<'idle'|'loading'>('idle')
   const [error, setError] = useState('')
   const [mapsReady, setMapsReady] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -29,7 +30,6 @@ export default function InputPanel({ onSubmit }: Props) {
     if (!key) return
     if ((window as any).google?.maps?.places) { setMapsReady(true); return }
     ;(window as any).initMaps = () => setMapsReady(true)
-    // Check if script already added
     if (document.querySelector('script[data-maps]')) return
     const s = document.createElement('script')
     s.setAttribute('data-maps', '1')
@@ -54,14 +54,39 @@ export default function InputPanel({ onSubmit }: Props) {
         if (!p?.geometry?.location) return
         const lat = p.geometry.location.lat()
         const lng = p.geometry.location.lng()
-        setPlace({ lat, lng, name: p.formatted_address || p.name || '' })
-        setSearchVal(p.formatted_address || p.name || '')
+        if (!isLagos(lat, lng)) { setError('Location outside Lagos.'); return }
+        const name = p.formatted_address || p.name || ''
+        setPlace({ lat, lng, name })
+        setSearchVal(name)
         setError('')
       })
-    } catch(e) {
-      console.error('Autocomplete init error:', e)
-    }
+    } catch(e) { console.error('Autocomplete error:', e) }
   }, [mapsReady])
+
+  // Fallback: server-side geocoding if Places autocomplete didn't fire
+  const handleServerGeocode = async () => {
+    if (!searchVal.trim() || place) return
+    setSearchState('loading')
+    setError('')
+    try {
+      const res = await fetch(`/api/geocode?address=${encodeURIComponent(searchVal + ', Lagos, Nigeria')}`)
+      const data = await res.json()
+      if (data.lat && data.lng) {
+        if (!isLagos(data.lat, data.lng)) {
+          setError('This address is outside Lagos.')
+          setSearchState('idle')
+          return
+        }
+        setPlace({ lat: data.lat, lng: data.lng, name: data.formatted || searchVal })
+        setError('')
+      } else {
+        setError('Address not found. Try a more specific address or paste a Google Maps link.')
+      }
+    } catch {
+      setError('Search failed. Check your connection and try again.')
+    }
+    setSearchState('idle')
+  }
 
   const handleGPS = () => {
     setError(''); setGpsState('loading')
@@ -83,55 +108,53 @@ export default function InputPanel({ onSubmit }: Props) {
       const tags = await ExifReader.load(file)
       const lat = parseFloat(tags['GPSLatitude']?.description as string)
       const lng = parseFloat(tags['GPSLongitude']?.description as string)
-      if (!lat || !lng) {
-        setError('No GPS in this photo. WhatsApp removes GPS data — use address search instead.')
-        return
-      }
+      if (!lat || !lng) { setError('No GPS in photo. WhatsApp removes GPS — use address search instead.'); return }
       if (!isLagos(lat, lng)) { setError('Photo GPS is outside Lagos.'); return }
       onSubmit(lat, lng)
-    } catch { setError('Could not read photo. Try address search instead.') }
+    } catch { setError('Could not read photo. Use address search instead.') }
+  }
+
+  const handleSubmit = () => {
+    if (place) { onSubmit(place.lat, place.lng); return }
+    if (searchVal.trim()) { handleServerGeocode(); return }
+    setError('Please enter an address first.')
   }
 
   return (
     <div style={{ padding: '1rem 1.75rem 1.25rem' }}>
-      {/* Search box */}
+
+      {/* Search input */}
       <div style={{ position: 'relative', marginBottom: 10 }}>
         <div style={{ position:'absolute', left:13, top:'50%', transform:'translateY(-50%)', pointerEvents:'none', zIndex:1 }}>
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="2.2">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
+          {searchState === 'loading'
+            ? <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="2" style={{animation:'spin 1s linear infinite'}}><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+            : <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          }
         </div>
         <input
           ref={inputRef}
           type="text"
           value={searchVal}
-          onChange={e => { setSearchVal(e.target.value); setPlace(null) }}
-          placeholder="Type area or address — e.g. Lekki Phase 1, Ajah..."
+          onChange={e => { setSearchVal(e.target.value); setPlace(null); setError('') }}
+          onKeyDown={e => e.key === 'Enter' && handleSubmit()}
+          placeholder="Search: Lekki Phase 1, Chevron Drive, Thomas Estate Ajah..."
           autoComplete="off"
           style={{
-            width: '100%',
-            padding: '13px 40px 13px 40px',
+            width: '100%', padding: '13px 40px 13px 40px',
             border: place ? '1.5px solid #0F6E56' : '1.5px solid #e0e0d8',
-            borderRadius: 12,
-            fontSize: 14,
-            fontFamily: 'Syne, sans-serif',
-            outline: 'none',
-            background: '#fff',
-            color: '#111',
-            transition: 'border-color 0.2s',
-            display: 'block',
+            borderRadius: 12, fontSize: 14, fontFamily: 'Syne, sans-serif',
+            outline: 'none', background: '#fff', color: '#111',
+            transition: 'border-color 0.2s', display: 'block',
           }}
         />
         {place && (
           <div style={{ position:'absolute', right:12, top:'50%', transform:'translateY(-50%)' }}>
-            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="2.5">
-              <path d="M20 6L9 17l-5-5"/>
-            </svg>
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="2.5"><path d="M20 6L9 17l-5-5"/></svg>
           </div>
         )}
       </div>
 
-      {/* Selected place confirmation */}
+      {/* Selected place */}
       {place && (
         <div style={{ padding:'8px 12px', background:'#E1F5EE', borderRadius:9, display:'flex', alignItems:'center', gap:8, marginBottom:10, border:'0.5px solid #9FE1CB' }}>
           <svg width="11" height="11" viewBox="0 0 24 24" fill="#0F6E56" style={{flexShrink:0}}>
@@ -143,18 +166,17 @@ export default function InputPanel({ onSubmit }: Props) {
       )}
 
       {/* Run button */}
-      <button
-        onClick={() => { if(place) onSubmit(place.lat, place.lng) }}
+      <button onClick={handleSubmit} disabled={searchState === 'loading'}
         style={{
           width: '100%', padding: '14px 0',
-          background: place ? '#0F6E56' : '#d4d4cc',
+          background: searchVal.trim() ? '#0F6E56' : '#d4d4cc',
           border: 'none', borderRadius: 11,
           fontFamily: 'Syne, sans-serif', fontSize: 14, fontWeight: 700,
-          color: '#fff', cursor: place ? 'pointer' : 'not-allowed',
+          color: '#fff', cursor: searchVal.trim() ? 'pointer' : 'not-allowed',
           transition: 'background 0.2s', marginBottom: 10,
         }}
       >
-        {place ? 'Run all 6 checks →' : 'Search for a location above first'}
+        {searchState === 'loading' ? 'Finding location...' : place ? 'Run all 6 checks →' : 'Search & verify →'}
       </button>
 
       {/* Secondary buttons */}
@@ -163,20 +185,18 @@ export default function InputPanel({ onSubmit }: Props) {
           flex:1, padding:'9px 6px', background:'#f5f5f0',
           border:'0.5px solid #e0e0d8', borderRadius:9,
           fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:500,
-          color:'#555', cursor:'pointer', display:'flex',
-          alignItems:'center', justifyContent:'center', gap:6,
+          color:'#555', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6,
         }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="2">
             <circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>
           </svg>
-          {gpsState==='loading' ? 'Detecting…' : 'Use my GPS'}
+          {gpsState==='loading' ? 'Detecting...' : 'Use GPS'}
         </button>
         <button onClick={() => fileRef.current?.click()} style={{
           flex:1, padding:'9px 6px', background:'#f5f5f0',
           border:'0.5px solid #e0e0d8', borderRadius:9,
           fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:500,
-          color:'#555', cursor:'pointer', display:'flex',
-          alignItems:'center', justifyContent:'center', gap:6,
+          color:'#555', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6,
         }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0F6E56" strokeWidth="2">
             <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
@@ -184,13 +204,29 @@ export default function InputPanel({ onSubmit }: Props) {
           </svg>
           Photo GPS
         </button>
+        <button onClick={() => { if(place) onSubmit(place.lat, place.lng) }} 
+          disabled={!place}
+          style={{
+            flex:1, padding:'9px 6px', 
+            background: place ? '#0F6E56' : '#f5f5f0',
+            border: place ? 'none' : '0.5px solid #e0e0d8',
+            borderRadius:9,
+            fontFamily:'Syne,sans-serif', fontSize:12, fontWeight:500,
+            color: place ? '#fff' : '#aaa', cursor: place ? 'pointer' : 'not-allowed',
+            display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+          }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M5 12h14M12 5l7 7-7 7"/>
+          </svg>
+          Verify
+        </button>
       </div>
 
       <input type="file" accept="image/*" ref={fileRef} style={{display:'none'}}
         onChange={e => e.target.files?.[0] && handlePhoto(e.target.files[0])}/>
 
       <p style={{ fontSize:10, color:'#bbb', lineHeight:1.65, marginTop:8, fontFamily:'DM Mono,monospace' }}>
-        GPS/Photo: stand physically on the land. Abroad? Use address search above.
+        Tip: Type any Lagos address and press Enter, or paste a Google Maps link in the AI Agent
       </p>
 
       {error && (
@@ -198,6 +234,8 @@ export default function InputPanel({ onSubmit }: Props) {
           {error}
         </div>
       )}
+
+      <style>{`@keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }

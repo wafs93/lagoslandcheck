@@ -162,6 +162,10 @@ export default function AgentPage() {
         .chip:hover{background:#E8F7F1!important;border-color:#0A5C45!important;color:#0A5C45!important}
         .check-item:hover{background:rgba(0,0,0,0.02)!important}
         .send-btn:hover{background:#085041!important}
+        @media(max-width:640px){
+          .hide-mobile{display:none!important}
+          .msg-bubble{max-width:88%!important}
+        }
       `}</style>
 
       {/* Header */}
@@ -179,7 +183,7 @@ export default function AgentPage() {
             Online · AI-powered · Satellite imagery
           </div>
         </div>
-        <div style={{ display: 'flex', gap: 5 }}>
+        <div style={{ display: 'flex', gap: 5 }} className='hide-mobile'>
           {['Gazette', 'Flood', 'Fraud', 'LUC', 'Court', 'AI'].map(t => (
             <span key={t} style={{ fontSize: 9, background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.9)', padding: '3px 7px', borderRadius: 4, fontFamily: "'JetBrains Mono',monospace" }}>{t}</span>
           ))}
