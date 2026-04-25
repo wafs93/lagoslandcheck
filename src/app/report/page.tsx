@@ -27,8 +27,133 @@ const verdictConfig = {
   CRITICAL: { bg: '#FEF2F2', border: '#FCA5A5', text: '#991B1B', label: '🚫 Do Not Proceed', sub: 'Critical flags found. Strongly advise against proceeding without professional legal advice.' },
 }
 
-// Paystack public key from env
 declare global { interface Window { PaystackPop: any } }
+
+function generatePDF(checks: Check[], overall: string, lat: string, lng: string, satelliteUrl: string | null) {
+  const vc = verdictConfig[overall as keyof typeof verdictConfig] || verdictConfig.CAUTION
+  const date = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+  const refNo = `LLC-${Date.now().toString(36).toUpperCase()}`
+
+  const statusBadge = (status: string) => {
+    const colors: Record<string, string> = {
+      clear: '#065F46', caution: '#92400E', critical: '#991B1B', queued: '#6B7280', running: '#1D4ED8'
+    }
+    const bgs: Record<string, string> = {
+      clear: '#D1FAE5', caution: '#FEF3C7', critical: '#FEE2E2', queued: '#F3F4F6', running: '#DBEAFE'
+    }
+    return `<span style="font-size:9px;font-family:monospace;padding:2px 8px;border-radius:4px;background:${bgs[status]||'#F3F4F6'};color:${colors[status]||'#6B7280'};font-weight:700">${status.toUpperCase()}</span>`
+  }
+
+  const html = `<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>LagosLandCheck Verification Report — ${refNo}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Syne', Arial, sans-serif; color: #111827; background: #fff; padding: 32px; max-width: 700px; margin: 0 auto; }
+  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #0A5C45; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .logo-box { width: 36px; height: 36px; background: #0A5C45; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+  .logo-name { font-size: 18px; font-weight: 700; color: #0A5C45; }
+  .ref { font-size: 10px; font-family: monospace; color: #6B7280; text-align: right; }
+  .verdict { border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid ${vc.border}; background: ${vc.bg}; }
+  .verdict-label { font-size: 18px; font-weight: 700; color: ${vc.text}; margin-bottom: 4px; }
+  .verdict-sub { font-size: 12px; color: ${vc.text}; opacity: 0.85; }
+  .meta { display: flex; gap: 12px; margin-top: 10px; }
+  .meta-tag { font-size: 10px; font-family: monospace; background: rgba(0,0,0,0.07); color: ${vc.text}; padding: 3px 8px; border-radius: 4px; }
+  .satellite { width: 100%; border-radius: 10px; margin-bottom: 20px; border: 1px solid #E5E7EB; }
+  .section-title { font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-family: monospace; }
+  .check { padding: 12px 0; border-bottom: 0.5px solid #F3F4F6; }
+  .check:last-child { border-bottom: none; }
+  .check-header { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .check-name { font-size: 13px; font-weight: 600; flex: 1; color: #111827; }
+  .check-summary { font-size: 12px; color: #6B7280; line-height: 1.55; padding-left: 18px; margin-bottom: 4px; }
+  .check-details { font-size: 11px; color: #374151; line-height: 1.7; padding-left: 18px; background: #F9FAFB; padding: 8px 12px 8px 30px; border-radius: 6px; margin-top: 4px; }
+  .disclaimer { font-size: 10px; color: #9CA3AF; line-height: 1.7; margin-top: 24px; padding-top: 16px; border-top: 1px solid #F3F4F6; font-family: monospace; }
+  .footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 12px; border-top: 1px solid #E5E7EB; }
+  .footer-brand { font-size: 11px; color: #0A5C45; font-weight: 600; }
+  .footer-ref { font-size: 10px; color: #9CA3AF; font-family: monospace; }
+  @media print {
+    body { padding: 16px; }
+    @page { margin: 10mm; }
+  }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <div class="logo-box">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <div>
+        <div class="logo-name">LagosLandCheck</div>
+        <div style="font-size:10px;color:#6B7280;font-family:monospace">Land Verification Intelligence</div>
+      </div>
+    </div>
+    <div class="ref">
+      <div style="font-weight:700;color:#111;font-size:11px">VERIFICATION CERTIFICATE</div>
+      <div>Ref: ${refNo}</div>
+      <div>Date: ${date}</div>
+    </div>
+  </div>
+
+  <div class="verdict">
+    <div class="verdict-label">${vc.label}</div>
+    <div class="verdict-sub">${vc.sub}</div>
+    <div class="meta">
+      <span class="meta-tag">${date}</span>
+      <span class="meta-tag">${parseFloat(lat).toFixed(5)}°N, ${parseFloat(lng).toFixed(5)}°E</span>
+    </div>
+  </div>
+
+  ${satelliteUrl ? `<img src="${satelliteUrl}" class="satellite" alt="Satellite view" />` : ''}
+
+  <div class="section-title">6-Point Verification Results</div>
+  <div style="border:1px solid #E5E7EB;border-radius:12px;padding:4px 16px;margin-bottom:20px">
+    ${checks.map(c => {
+      const dotColors: Record<string, string> = { clear: '#22C55E', caution: '#F59E0B', critical: '#EF4444', queued: '#D1D5DB', running: '#60A5FA' }
+      return `<div class="check">
+        <div class="check-header">
+          <div class="dot" style="background:${dotColors[c.status]||'#D1D5DB'}"></div>
+          <span class="check-name">${c.name}</span>
+          ${statusBadge(c.status)}
+        </div>
+        <div class="check-summary">${c.summary}</div>
+        ${c.details ? `<div class="check-details">${c.details}</div>` : ''}
+      </div>`
+    }).join('')}
+  </div>
+
+  <div class="disclaimer">
+    <strong>IMPORTANT DISCLAIMER:</strong> This report is a pre-screening intelligence tool generated by LagosLandCheck. It does not constitute legal advice and does not replace a physical Land Registry search by a licensed property lawyer. The information in this report is based on available databases and satellite imagery at the time of generation. LagosLandCheck accepts no liability for decisions made solely on the basis of this report. Always engage a qualified Nigerian property lawyer before completing any land transaction.
+    <br><br>
+    <strong>Recommended next step:</strong> Present this report to a licensed property solicitor and instruct them to conduct a full Land Registry search at the Lagos State Land Registry, Alausa.
+  </div>
+
+  <div class="footer">
+    <div class="footer-brand">LagosLandCheck · lagoslandcheck.vercel.app</div>
+    <div class="footer-ref">Ref: ${refNo} · ${date}</div>
+  </div>
+</body>
+</html>`
+
+  // Open in new window and trigger print
+  const win = window.open('', '_blank')
+  if (!win) {
+    alert('Please allow popups to download the PDF report.')
+    return
+  }
+  win.document.write(html)
+  win.document.close()
+  win.onload = () => {
+    setTimeout(() => {
+      win.print()
+    }, 500)
+  }
+}
 
 function ReportContent() {
   const params = useSearchParams()
@@ -341,7 +466,9 @@ function ReportContent() {
                   <div style={{ fontSize: 14, fontWeight: 600, color: '#111', marginBottom: 2 }}>PDF Certificate ready</div>
                   <div style={{ fontSize: 12, color: '#6B7280' }}>Download and share with your property lawyer</div>
                 </div>
-                <button style={{ padding: '9px 16px', background: '#0A5C45', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                <button
+                  onClick={() => generatePDF(checks, overall, lat!, lng!, satelliteUrl)}
+                  style={{ padding: '9px 16px', background: '#0A5C45', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   Download PDF
                 </button>
               </div>
