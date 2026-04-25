@@ -310,21 +310,46 @@ function VerificationCard({ result, expanded, setExpanded }: {
   expanded: string | null
   setExpanded: (id: string | null) => void
 }) {
+  const [imgZoom, setImgZoom] = useState(false)
   const vc = verdictConfig[result.overall as keyof typeof verdictConfig] || verdictConfig.CAUTION
   const satelliteCheck = result.checks?.find(c => c.id === 'satellite')
   const hasBuilding = satelliteCheck?.summary?.includes('Building detected') || satelliteCheck?.summary?.includes('building')
 
-  // Build satellite image URL if we have coordinates
   const satelliteUrl = result.lat && result.lng
     ? `https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lng}&zoom=19&size=600x300&maptype=satellite&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
     : null
 
-  return (
-    <div style={{ border: '1px solid #E5E7EB', borderRadius: 16, overflow: 'hidden', background: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
+  const satelliteUrlHD = result.lat && result.lng
+    ? `https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lng}&zoom=19&size=640x640&maptype=satellite&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+    : null
 
-      {/* Satellite image */}
+  return (
+    <>
+      {/* Lightbox */}
+      {imgZoom && satelliteUrlHD && (
+        <div onClick={() => setImgZoom(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', cursor: 'zoom-out' }}>
+          <div style={{ position: 'relative', maxWidth: 640, width: '100%' }}>
+            <img src={satelliteUrlHD} alt="Satellite HD" style={{ width: '100%', borderRadius: 12, display: 'block' }} />
+            <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.7)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace" }}>
+              🛰️ {result.lat?.toFixed(5)}°N, {result.lng?.toFixed(5)}°E
+            </div>
+            {hasBuilding && (
+              <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.9)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", fontWeight: 700 }}>
+                ⚠️ BUILDING DETECTED
+              </div>
+            )}
+            <div style={{ textAlign: 'center', marginTop: 10, fontSize: 12, color: 'rgba(255,255,255,0.5)', fontFamily: "'JetBrains Mono',monospace" }}>
+              Tap anywhere to close
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ border: '1px solid #E5E7EB', borderRadius: 16, overflow: 'hidden', background: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
+
+      {/* Satellite image — tap to zoom */}
       {satelliteUrl && (
-        <div style={{ position: 'relative', background: '#0A1628' }}>
+        <div style={{ position: 'relative', background: '#0A1628', cursor: 'zoom-in' }} onClick={() => setImgZoom(true)}>
           <img
             src={satelliteUrl}
             alt="Satellite view"
@@ -332,15 +357,23 @@ function VerificationCard({ result, expanded, setExpanded }: {
             onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
           />
           <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.6)', borderRadius: 6, padding: '3px 8px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", backdropFilter: 'blur(4px)' }}>
-            🛰️ SATELLITE VIEW
+            🛰️ SATELLITE · Tap to zoom
           </div>
           {hasBuilding && (
             <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(239,68,68,0.9)', borderRadius: 6, padding: '3px 8px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", fontWeight: 600 }}>
               ⚠️ BUILDING DETECTED
             </div>
           )}
-          <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', borderRadius: 6, padding: '3px 8px', fontSize: 9, color: '#fff', fontFamily: "'JetBrains Mono',monospace' ", backdropFilter: 'blur(4px)' }}>
+          <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', borderRadius: 6, padding: '3px 8px', fontSize: 9, color: '#fff', fontFamily: "'JetBrains Mono',monospace", backdropFilter: 'blur(4px)' }}>
             {result.lat?.toFixed(4)}°N, {result.lng?.toFixed(4)}°E
+          </div>
+          {/* Zoom hint */}
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s' }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
+            onMouseLeave={e => (e.currentTarget.style.opacity = '0')}>
+            <div style={{ background: 'rgba(0,0,0,0.6)', borderRadius: 8, padding: '8px 14px', fontSize: 12, color: '#fff', backdropFilter: 'blur(4px)' }}>
+              🔍 Click to zoom
+            </div>
           </div>
         </div>
       )}
@@ -390,7 +423,7 @@ function VerificationCard({ result, expanded, setExpanded }: {
 
       {/* Actions */}
       <div style={{ padding: '12px 16px', borderTop: '1px solid #F3F4F6', display: 'flex', gap: 8 }}>
-        <a href="/" style={{ flex: 1, padding: '10px 0', background: '#0A5C45', borderRadius: 9, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', textAlign: 'center', display: 'block' }}>
+        <a href={`/report?lat=${result.lat}&lng=${result.lng}`} style={{ flex: 1, padding: '10px 0', background: '#0A5C45', borderRadius: 9, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', textAlign: 'center', display: 'block' }}>
           View full report →
         </a>
         <button style={{ flex: 1, padding: '10px 0', background: '#fff', border: '1px solid #E5E7EB', borderRadius: 9, fontSize: 13, fontWeight: 500, color: '#374151', cursor: 'pointer' }}>
@@ -398,5 +431,6 @@ function VerificationCard({ result, expanded, setExpanded }: {
         </button>
       </div>
     </div>
+    </>
   )
 }
