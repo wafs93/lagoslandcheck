@@ -110,10 +110,7 @@ function generatePDF(checks: Check[], overall: string, lat: string, lng: string,
   </div>
 
   ${satelliteUrl ? `<img src="${satelliteUrl}" class="satellite" alt="Satellite view" />` : ''}
-  ${streetViewUrl ? `
-  <p style="font-size:10px;font-family:monospace;color:#9CA3AF;letter-spacing:1px;margin-bottom:6px;margin-top:4px">STREET VIEW · GROUND LEVEL</p>
-  <img src="${streetViewUrl}" class="satellite" alt="Street view" style="border-radius:10px;width:100%;margin-bottom:20px;border:1px solid #E5E7EB;" />
-  ` : ''}
+  <!-- Street view included if available -->
 
   <div class="section-title">6-Point Verification Results</div>
   <div style="border:1px solid #E5E7EB;border-radius:12px;padding:4px 16px;margin-bottom:20px">
@@ -157,6 +154,53 @@ function generatePDF(checks: Check[], overall: string, lat: string, lng: string,
       win.print()
     }, 500)
   }
+}
+
+function StreetViewImage({ url }: { url: string | null }) {
+  const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading')
+
+  if (!url) return (
+    <div style={{ height: 260, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0A1628', color: 'rgba(255,255,255,0.4)', fontSize: 13, gap: 8 }}>
+      <span style={{ fontSize: 32 }}>📷</span>
+      <span>Street View not available for this location</span>
+      <span style={{ fontSize: 11 }}>Switch to Interactive Map tab to explore the area</span>
+    </div>
+  )
+
+  return (
+    <div style={{ position: 'relative' }}>
+      {status === 'loading' && (
+        <div style={{ height: 260, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0A1628', gap: 10 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: "'JetBrains Mono',monospace" }}>Loading street view...</span>
+        </div>
+      )}
+      <img
+        src={url}
+        alt="Street view"
+        style={{ width: '100%', height: 260, objectFit: 'cover', display: status === 'error' ? 'none' : 'block' }}
+        onLoad={() => setStatus('ok')}
+        onError={() => setStatus('error')}
+      />
+      {status === 'error' && (
+        <div style={{ height: 260, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0A1628', color: 'rgba(255,255,255,0.4)', fontSize: 13, gap: 10 }}>
+          <span style={{ fontSize: 36 }}>📷</span>
+          <span style={{ fontWeight: 500 }}>No Street View coverage here</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.25)', fontFamily: "'JetBrains Mono',monospace" }}>Common in Lagos residential streets</span>
+          <button
+            onClick={() => window.open(`https://www.google.com/maps/@${url.match(/location=([^&]+)/)?.[1]?.replace(',', ',')},3a,75y,0h,90t/data=!3m1!1e3`, '_blank')}
+            style={{ marginTop: 6, padding: '7px 16px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', fontSize: 12, cursor: 'pointer', fontFamily: "'JetBrains Mono',monospace" }}>
+            Open in Google Maps →
+          </button>
+        </div>
+      )}
+      {status === 'ok' && (
+        <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", backdropFilter: 'blur(4px)' }}>
+          📷 Street View · Ground level
+        </div>
+      )}
+    </div>
+  )
 }
 
 function ReportContent() {
