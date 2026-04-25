@@ -29,7 +29,7 @@ const verdictConfig = {
 
 declare global { interface Window { PaystackPop: any } }
 
-function generatePDF(checks: Check[], overall: string, lat: string, lng: string, satelliteUrl: string | null) {
+function generatePDF(checks: Check[], overall: string, lat: string, lng: string, satelliteUrl: string | null, streetViewUrl: string | null) {
   const vc = verdictConfig[overall as keyof typeof verdictConfig] || verdictConfig.CAUTION
   const date = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
   const refNo = `LLC-${Date.now().toString(36).toUpperCase()}`
@@ -110,6 +110,10 @@ function generatePDF(checks: Check[], overall: string, lat: string, lng: string,
   </div>
 
   ${satelliteUrl ? `<img src="${satelliteUrl}" class="satellite" alt="Satellite view" />` : ''}
+  ${streetViewUrl ? `
+  <p style="font-size:10px;font-family:monospace;color:#9CA3AF;letter-spacing:1px;margin-bottom:6px;margin-top:4px">STREET VIEW · GROUND LEVEL</p>
+  <img src="${streetViewUrl}" class="satellite" alt="Street view" style="border-radius:10px;width:100%;margin-bottom:20px;border:1px solid #E5E7EB;" />
+  ` : ''}
 
   <div class="section-title">6-Point Verification Results</div>
   <div style="border:1px solid #E5E7EB;border-radius:12px;padding:4px 16px;margin-bottom:20px">
@@ -263,13 +267,22 @@ function ReportContent() {
 
   const vc = verdictConfig[overall]
 
-  // Satellite image URL
   const satelliteUrl = lat && lng
-    ? `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=19&size=600x280&maptype=satellite&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+    ? `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=19&size=640x360&maptype=satellite&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+    : null
+
+  const streetViewUrl = lat && lng
+    ? `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${lat},${lng}&fov=90&pitch=0&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+    : null
+
+  const mapsEmbedUrl = lat && lng
+    ? `https://www.google.com/maps/embed/v1/view?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&center=${lat},${lng}&zoom=19&maptype=satellite`
     : null
 
   const satelliteCheck = checks.find(c => c.id === 'satellite')
   const hasBuilding = satelliteCheck?.summary?.includes('Building') || satelliteCheck?.summary?.includes('building')
+  const [activeView, setActiveView] = useState<'satellite' | 'street' | 'map'>('satellite')
+  const [imgZoom, setImgZoom] = useState(false)
 
   return (
     <div style={{ fontFamily: "'Syne', sans-serif", background: '#F9FAFB', minHeight: '100vh' }}>
@@ -327,19 +340,88 @@ function ReportContent() {
         {phase === 'report' && (
           <div className="appear">
 
-            {/* Satellite image */}
-            {satelliteUrl && (
-              <div style={{ borderRadius: 16, overflow: 'hidden', marginBottom: '1rem', border: '1px solid #E5E7EB', position: 'relative', boxShadow: '0 2px 12px rgba(0,0,0,0.08)' }}>
-                <img src={satelliteUrl} alt="Satellite view" style={{ width: '100%', height: 200, objectFit: 'cover', display: 'block' }}
-                  onError={e => { (e.target as HTMLImageElement).parentElement!.style.display = 'none' }} />
-                <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", backdropFilter: 'blur(4px)' }}>
-                  🛰️ SATELLITE VIEW
+            {/* Image viewer with tabs */}
+            {(satelliteUrl || streetViewUrl || mapsEmbedUrl) && (
+              <div style={{ borderRadius: 16, overflow: 'hidden', marginBottom: '1rem', border: '1px solid #E5E7EB', boxShadow: '0 2px 16px rgba(0,0,0,0.08)' }}>
+                {/* Tab bar */}
+                <div style={{ display: 'flex', background: '#0A1628', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                  {([
+                    { id: 'satellite', label: '🛰️ Satellite', show: !!satelliteUrl },
+                    { id: 'street', label: '📷 Street View', show: !!streetViewUrl },
+                    { id: 'map', label: '🗺️ Interactive Map', show: !!mapsEmbedUrl },
+                  ] as Array<{id:'satellite'|'street'|'map',label:string,show:boolean}>).filter(t => t.show).map(tab => (
+                    <button key={tab.id} onClick={() => setActiveView(tab.id)}
+                      style={{ padding: '10px 14px', background: activeView === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', borderBottom: activeView === tab.id ? '2px solid #CFAF6E' : '2px solid transparent', color: activeView === tab.id ? '#fff' : 'rgba(255,255,255,0.45)', fontSize: 11, fontFamily: "'JetBrains Mono',monospace", cursor: 'pointer', transition: 'all 0.15s', whiteSpace: 'nowrap' }}>
+                      {tab.label}
+                    </button>
+                  ))}
+                  <div style={{ flex: 1 }} />
+                  <div style={{ padding: '10px 12px', fontSize: 9, fontFamily: "'JetBrains Mono',monospace", color: 'rgba(255,255,255,0.3)', alignSelf: 'center' }}>
+                    {lat ? `${parseFloat(lat).toFixed(5)}°N, ${parseFloat(lng!).toFixed(5)}°E` : ''}
+                  </div>
                 </div>
-                {hasBuilding && (
-                  <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.9)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", fontWeight: 700 }}>
-                    ⚠️ BUILDING DETECTED
+
+                {/* Satellite tab */}
+                {activeView === 'satellite' && satelliteUrl && (
+                  <div style={{ position: 'relative', cursor: 'zoom-in' }} onClick={() => setImgZoom(true)}>
+                    <img src={satelliteUrl} alt="Satellite view" style={{ width: '100%', height: 260, objectFit: 'cover', display: 'block' }}
+                      onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                    <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", backdropFilter: 'blur(4px)' }}>
+                      Tap to zoom · AI-analysed
+                    </div>
+                    {hasBuilding && (
+                      <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.9)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", fontWeight: 700 }}>
+                        ⚠️ BUILDING DETECTED
+                      </div>
+                    )}
+                    <div style={{ position: 'absolute', bottom: 10, right: 10, background: 'rgba(0,0,0,0.6)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace" }}>
+                      zoom 19 · satellite
+                    </div>
                   </div>
                 )}
+
+                {/* Street View tab */}
+                {activeView === 'street' && streetViewUrl && (
+                  <div style={{ position: 'relative' }}>
+                    <img src={streetViewUrl} alt="Street view" style={{ width: '100%', height: 260, objectFit: 'cover', display: 'block' }}
+                      onError={e => {
+                        (e.target as HTMLImageElement).style.display = 'none';
+                        const parent = (e.target as HTMLImageElement).parentElement!;
+                        parent.innerHTML = '<div style="height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#0A1628;color:rgba(255,255,255,0.4);font-size:13px;gap:8px"><span style=\"font-size:32px\">📷</span><span>No Street View available for this location</span><span style=\"font-size:11px\">Try the Interactive Map tab</span></div>'
+                      }} />
+                    <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", backdropFilter: 'blur(4px)' }}>
+                      📷 Street View · Ground level
+                    </div>
+                  </div>
+                )}
+
+                {/* Interactive Map tab */}
+                {activeView === 'map' && mapsEmbedUrl && (
+                  <div style={{ position: 'relative' }}>
+                    <iframe src={mapsEmbedUrl} width="100%" height="260" style={{ border: 'none', display: 'block' }} allowFullScreen loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+                    <div style={{ position: 'absolute', bottom: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", backdropFilter: 'blur(4px)' }}>
+                      Pinch to zoom · Scroll to explore
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Zoom lightbox */}
+            {imgZoom && satelliteUrl && (
+              <div onClick={() => setImgZoom(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', cursor: 'zoom-out' }}>
+                <div style={{ position: 'relative', maxWidth: 700, width: '100%' }}>
+                  <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=20&size=640x640&maptype=satellite&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`} alt="HD Satellite" style={{ width: '100%', borderRadius: 12, display: 'block' }} />
+                  <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.7)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace" }}>
+                    🛰️ HD View · zoom 20 · {lat ? parseFloat(lat).toFixed(5) : ''}°N, {lng ? parseFloat(lng).toFixed(5) : ''}°E
+                  </div>
+                  {hasBuilding && (
+                    <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.9)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", fontWeight: 700 }}>
+                      ⚠️ BUILDING DETECTED
+                    </div>
+                  )}
+                  <div style={{ textAlign: 'center', marginTop: 10, fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: "'JetBrains Mono',monospace" }}>Tap anywhere to close</div>
+                </div>
               </div>
             )}
 
@@ -467,7 +549,7 @@ function ReportContent() {
                   <div style={{ fontSize: 12, color: '#6B7280' }}>Download and share with your property lawyer</div>
                 </div>
                 <button
-                  onClick={() => generatePDF(checks, overall, lat!, lng!, satelliteUrl)}
+                  onClick={() => generatePDF(checks, overall, lat!, lng!, satelliteUrl, streetViewUrl)}
                   style={{ padding: '9px 16px', background: '#0A5C45', border: 'none', borderRadius: 9, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                   Download PDF
                 </button>
