@@ -1,12 +1,8 @@
 'use client'
 import React, { useState } from 'react'
-import { useRouter } from 'next/navigation'
-import InputPanel from '@/components/InputPanel'
 
 export default function Home() {
-  const router = useRouter()
   const [showSample, setShowSample] = useState(false)
-  const go = (lat: number, lng: number) => router.push(`/report?lat=${lat}&lng=${lng}`)
 
   return (
     <div style={{ fontFamily:"'Syne',sans-serif", background:'#F8FAF9', color:'#111827' }}>
@@ -101,7 +97,7 @@ export default function Home() {
 
           {/* CTAs */}
           <div className="hero-ctas fade-4" style={{display:'flex',gap:12,justifyContent:'center',marginBottom:'2.5rem',flexWrap:'wrap'}}>
-            <a href="#verify" className="cta-gold" style={{padding:'14px 32px',borderRadius:10,fontSize:15,fontWeight:700,textDecoration:'none',cursor:'pointer',display:'inline-block'}}>
+            <a href="/agent" className="cta-gold" style={{padding:'14px 32px',borderRadius:10,fontSize:15,fontWeight:700,textDecoration:'none',cursor:'pointer',display:'inline-block'}}>
               🔍 Check a Land Now
             </a>
             <button onClick={()=>setShowSample(true)} style={{padding:'14px 28px',background:'rgba(255,255,255,.08)',border:'1px solid rgba(255,255,255,.2)',borderRadius:10,fontSize:15,fontWeight:500,color:'rgba(255,255,255,.85)',cursor:'pointer',transition:'all .2s'}}
@@ -130,23 +126,41 @@ export default function Home() {
         <div style={{position:'absolute',bottom:0,left:0,right:0,height:80,background:'linear-gradient(transparent,#F8FAF9)',pointerEvents:'none'}}/>
       </section>
 
-      {/* ── VERIFY FORM ── */}
+      {/* ── AGENT CTA ── */}
       <section id="verify" style={{background:'#F8FAF9',padding:'0 1.5rem 4rem'}}>
         <div style={{maxWidth:640,margin:'0 auto',marginTop:-32,position:'relative',zIndex:10}}>
           <div style={{background:'#fff',borderRadius:20,border:'1px solid #E5E7EB',boxShadow:'0 8px 48px rgba(0,0,0,.1)',overflow:'hidden'}}>
-            <div style={{background:'linear-gradient(135deg,#0A5C45,#07382C)',padding:'1.25rem 1.75rem',display:'flex',alignItems:'center',justifyContent:'space-between'}}>
-              <div>
-                <p style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:'rgba(255,255,255,.5)',letterSpacing:'1.5px',marginBottom:2}}>STEP 1 OF YOUR DUE DILIGENCE</p>
-                <h2 style={{fontFamily:"'Lora',serif",fontSize:20,color:'#fff',fontWeight:600}}>Where is the land?</h2>
-              </div>
-              <div style={{display:'flex',gap:5,flexWrap:'wrap',maxWidth:220,justifyContent:'flex-end'}}>
-                {['Gazette','Flood','Fraud','LUC','Court','AI'].map(t=>(
-                  <span key={t} style={{fontSize:9,fontFamily:"'JetBrains Mono',monospace",background:'rgba(207,175,110,.2)',color:'#CFAF6E',padding:'3px 7px',borderRadius:4}}>{t}</span>
+            <div style={{background:'linear-gradient(135deg,#0A5C45,#07382C)',padding:'1.5rem 1.75rem'}}>
+              <p style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:'rgba(255,255,255,.5)',letterSpacing:'1.5px',marginBottom:6}}>START YOUR VERIFICATION</p>
+              <h2 style={{fontFamily:"'Lora',serif",fontSize:22,color:'#fff',fontWeight:600,marginBottom:8,lineHeight:1.3}}>Talk to the Lagos Land Agent</h2>
+              <p style={{fontSize:13,color:'rgba(255,255,255,.6)',lineHeight:1.7,marginBottom:'1.25rem'}}>Our AI agent accepts any location format — address, Google Maps link, What3Words, survey plan coordinates, or GPS. It runs all 6 checks and shows you a satellite image of the land.</p>
+              <div style={{display:'flex',flexWrap:'wrap',gap:6,marginBottom:'1.25rem'}}>
+                {[
+                  '📍 Type any address',
+                  '🔗 Paste Google Maps link',
+                  '📐 What3Words address',
+                  '🗺️ Survey plan coordinates',
+                ].map(h=>(
+                  <span key={h} style={{fontSize:11,background:'rgba(255,255,255,.1)',color:'rgba(255,255,255,.75)',padding:'4px 10px',borderRadius:6,border:'0.5px solid rgba(255,255,255,.15)'}}>{h}</span>
                 ))}
               </div>
+              <a href="/agent" style={{display:'flex',alignItems:'center',justifyContent:'center',gap:10,padding:'14px 0',background:'linear-gradient(135deg,#CFAF6E,#B8942A)',borderRadius:11,fontSize:15,fontWeight:700,color:'#fff',textDecoration:'none',boxShadow:'0 4px 16px rgba(207,175,110,.3)'}}>
+                <span style={{width:7,height:7,borderRadius:'50%',background:'#4ADE80',animation:'blink 1.5s infinite',display:'inline-block'}}/>
+                Start verification with AI Agent →
+              </a>
             </div>
-            <p style={{fontSize:12,color:'#9CA3AF',padding:'.75rem 1.75rem 0',lineHeight:1.6}}>Type any Lagos address, paste a Google Maps link, or use GPS.</p>
-            <InputPanel onSubmit={go}/>
+            <div style={{padding:'1rem 1.75rem',display:'flex',alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',gap:8}}>
+              {[
+                {icon:'⚡',t:'Under 2 minutes'},
+                {icon:'🌍',t:'Works from anywhere'},
+                {icon:'🛰️',t:'Satellite imagery'},
+                {icon:'📄',t:'PDF certificate'},
+              ].map(f=>(
+                <div key={f.t} style={{display:'flex',alignItems:'center',gap:6,fontSize:12,color:'#6B7280'}}>
+                  <span>{f.icon}</span>{f.t}
+                </div>
+              ))}
+            </div>
           </div>
           <div style={{display:'flex',alignItems:'center',gap:8,justifyContent:'center',marginTop:'1rem'}}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -348,7 +362,7 @@ export default function Home() {
                   </div>
                 ))}
               </div>
-              <a href="#verify" className="cta-gold" style={{padding:'13px 28px',borderRadius:10,fontSize:14,fontWeight:700,textDecoration:'none',display:'inline-block'}}>
+              <a href="/agent" className="cta-gold" style={{padding:'13px 28px',borderRadius:10,fontSize:14,fontWeight:700,textDecoration:'none',display:'inline-block'}}>
                 Verify my land now →
               </a>
             </div>
@@ -409,7 +423,7 @@ export default function Home() {
                 </div>
               ))}
             </div>
-            <a href="#verify" className="cta-gold" style={{display:'block',padding:'14px 0',borderRadius:11,fontSize:15,fontWeight:700,textDecoration:'none',textAlign:'center'}}>
+            <a href="/agent" className="cta-gold" style={{display:'block',padding:'14px 0',borderRadius:11,fontSize:15,fontWeight:700,textDecoration:'none',textAlign:'center'}}>
               Start free · Unlock for ₦2,500 →
             </a>
           </div>
@@ -425,7 +439,7 @@ export default function Home() {
             <span style={{color:'#CFAF6E',fontStyle:'italic'}}>Every single time.</span>
           </h2>
           <p style={{fontSize:15,color:'rgba(255,255,255,.55)',lineHeight:1.75,marginBottom:'2rem'}}>Takes 2 minutes. Works from anywhere in the world. No account needed to start.</p>
-          <a href="#verify" className="cta-gold" style={{display:'inline-block',padding:'15px 40px',borderRadius:11,fontSize:16,fontWeight:700,textDecoration:'none',marginBottom:'1rem'}}>
+          <a href="/agent" className="cta-gold" style={{display:'inline-block',padding:'15px 40px',borderRadius:11,fontSize:16,fontWeight:700,textDecoration:'none',marginBottom:'1rem'}}>
             🔍 Check a Land Now — Free
           </a>
           <div style={{display:'flex',alignItems:'center',gap:'1.5rem',justifyContent:'center',flexWrap:'wrap',marginTop:'1rem'}}>
