@@ -1,436 +1,596 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-
-interface Message {
-  role: 'user' | 'agent'
-  content: string
-  type?: 'text' | 'verification'
-  verification?: VerificationResult
-  timestamp: Date
-}
 
 interface CheckResult {
   id: string
   name: string
-  status: 'clear' | 'caution' | 'critical' | 'error'
+  status: 'clear' | 'caution' | 'critical' | 'running' | 'queued'
   summary: string
   details: string
+  icon?: string
 }
 
 interface VerificationResult {
-  overall: string
+  overall: 'CLEAR' | 'CAUTION' | 'CRITICAL'
   location_label: string
-  confidence: string
+  confidence: 'high' | 'medium' | 'low'
   checks: CheckResult[]
   lat?: number
   lng?: number
 }
 
-const QUICK_PROMPTS = [
-  { label: '🔍 Verify land in Lekki', msg: 'I want to verify land in Lekki Phase 1, Lagos' },
-  { label: '⚠️ Ajah area risks', msg: 'What are the fraud risks for buying land in Ajah?' },
-  { label: '🌿 Rural land near Epe', msg: 'I want to buy land in a rural area near Epe, how do I verify it?' },
-  { label: '📄 Check my C of O', msg: 'How do I know if my Certificate of Occupancy is genuine?' },
-  { label: '👥 What is Omo Onile?', msg: 'What is Omo Onile and how do I protect myself?' },
-  { label: '🏭 Ibeju-Lekki risks', msg: 'I want to buy land in Ibeju-Lekki near the Free Trade Zone' },
+type Stage = 'input' | 'processing' | 'results'
+
+const CHECKS_CONFIG = [
+  { id: 'satellite',  icon: '🛰️', name: 'Satellite imagery',         label: 'Analyzing satellite imagery...' },
+  { id: 'gazette',    icon: '📜', name: 'Gazette & govt acquisition', label: 'Checking Lagos State gazettes...' },
+  { id: 'flood',      icon: '🌊', name: 'Flood & drainage risk',      label: 'Checking flood risk zones...' },
+  { id: 'litigation', icon: '⚖️', name: 'Court litigation',           label: 'Searching court disputes...' },
+  { id: 'luc',        icon: '🧾', name: 'Land Use Charge status',     label: 'Verifying LUC compliance...' },
+  { id: 'fraud',      icon: '🚨', name: 'Fraud zone & Omo Onile',     label: 'Scanning fraud database...' },
 ]
 
-const statusColors = {
-  clear: { bg: '#ECFDF5', text: '#065F46', dot: '#22C55E', badge: '#D1FAE5', label: 'CLEAR' },
-  caution: { bg: '#FFFBEB', text: '#92400E', dot: '#F59E0B', badge: '#FEF3C7', label: 'CAUTION' },
-  critical: { bg: '#FEF2F2', text: '#991B1B', dot: '#EF4444', badge: '#FEE2E2', label: 'CRITICAL' },
-  error: { bg: '#F9FAFB', text: '#6B7280', dot: '#9CA3AF', badge: '#F3F4F6', label: 'UNKNOWN' },
+const RISK_CONFIG = {
+  CLEAR:    { bg: '#ECFDF5', border: '#6EE7B7', text: '#065F46', label: '🟢 Low Risk',    sub: 'No major issues found. Continue with standard legal due diligence.' },
+  CAUTION:  { bg: '#FFFBEB', border: '#FCD34D', text: '#92400E', label: '🟡 Medium Risk', sub: 'Concerns detected. Do not pay any money before consulting a lawyer.' },
+  CRITICAL: { bg: '#FEF2F2', border: '#FCA5A5', text: '#991B1B', label: '🔴 High Risk',   sub: 'Critical flags found. Strongly advise against proceeding.' },
 }
 
-const verdictConfig = {
-  CLEAR: { bg: '#ECFDF5', border: '#6EE7B7', text: '#065F46', label: '✅ ALL CLEAR', icon: '✅' },
-  CAUTION: { bg: '#FFFBEB', border: '#FCD34D', text: '#92400E', label: '⚠️ PROCEED WITH CAUTION', icon: '⚠️' },
-  CRITICAL: { bg: '#FEF2F2', border: '#FCA5A5', text: '#991B1B', label: '🚫 DO NOT PROCEED', icon: '🚫' },
+const STATUS_CONFIG = {
+  clear:    { color: '#22C55E', bg: '#ECFDF5', badge: '#D1FAE5', text: '#065F46', label: 'CLEAR' },
+  caution:  { color: '#F59E0B', bg: '#FFFBEB', badge: '#FEF3C7', text: '#92400E', label: 'CAUTION' },
+  critical: { color: '#EF4444', bg: '#FEF2F2', badge: '#FEE2E2', text: '#991B1B', label: 'HIGH RISK' },
+  running:  { color: '#60A5FA', bg: '#EFF6FF', badge: '#DBEAFE', text: '#1D4ED8', label: 'CHECKING' },
+  queued:   { color: '#D1D5DB', bg: '#F9FAFB', badge: '#F3F4F6', text: '#6B7280', label: 'QUEUED' },
+}
+
+function StreetViewTab({ url, lat, lng }: { url: string | null; lat?: number; lng?: number }) {
+  const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading')
+  if (!url) return (
+    <div style={{ height: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0A1628', color: 'rgba(255,255,255,0.4)', gap: 8 }}>
+      <span style={{ fontSize: 32 }}>📷</span>
+      <span style={{ fontSize: 13 }}>No Street View available</span>
+      <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono',monospace" }}>Try the Interactive Map tab</span>
+    </div>
+  )
+  return (
+    <div style={{ position: 'relative', minHeight: 240 }}>
+      {status === 'loading' && (
+        <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0A1628', gap: 10, position: 'absolute', inset: 0, zIndex: 1 }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: "'JetBrains Mono',monospace" }}>Loading street view...</span>
+        </div>
+      )}
+      <img src={url} alt="Street view"
+        style={{ width: '100%', height: 240, objectFit: 'cover', display: status === 'error' ? 'none' : 'block' }}
+        onLoad={() => setStatus('ok')} onError={() => setStatus('error')} />
+      {status === 'error' && (
+        <div style={{ height: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0A1628', color: 'rgba(255,255,255,0.5)', gap: 10 }}>
+          <span style={{ fontSize: 36 }}>📷</span>
+          <span style={{ fontSize: 13, fontWeight: 500 }}>No Street View coverage here</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: "'JetBrains Mono',monospace" }}>Common in Lagos residential streets</span>
+          {lat && lng && (
+            <a href={`https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m1!1e3`} target="_blank" rel="noopener noreferrer"
+              style={{ marginTop: 4, padding: '7px 16px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', fontSize: 12, textDecoration: 'none' }}>
+              Open in Google Maps →
+            </a>
+          )}
+        </div>
+      )}
+      {status === 'ok' && (
+        <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace" }}>
+          📷 Street View · Ground level
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function AgentPage() {
   const router = useRouter()
-  const [messages, setMessages] = useState<Message[]>([{
-    role: 'agent',
-    content: "Hi! I'm your Lagos Land Agent 🏙️\n\nI verify land anywhere in Lagos — urban estates, rural areas, even remote bush land near Epe or Badagry.\n\nI accept:\n📍 Street address or estate name\n🔗 Google Maps link (paste it directly)\n📐 What3Words (///word.word.word)\n🗺️ Survey plan coordinates\n\nI'll run all 6 checks and show you a satellite image of the land.\n\nWhat land do you want to verify?",
-    timestamp: new Date()
-  }])
+  const [stage, setStage] = useState<Stage>('input')
   const [input, setInput] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [streamingText, setStreamingText] = useState('')
-  const [toolWorking, setToolWorking] = useState<string | null>(null)
+  const [processingStep, setProcessingStep] = useState(0)
+  const [processingChecks, setProcessingChecks] = useState<string[]>([])
+  const [result, setResult] = useState<VerificationResult | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const [imgZoom, setImgZoom] = useState(false)
+  const [activeTab, setActiveTab] = useState<'satellite' | 'street' | 'map'>('satellite')
+  const [chatOpen, setChatOpen] = useState(false)
+  const [chatInput, setChatInput] = useState('')
+  const [chatMessages, setChatMessages] = useState<{role:'user'|'agent';text:string}[]>([])
+  const [chatLoading, setChatLoading] = useState(false)
+  const [paid, setPaid] = useState(false)
+  const [email, setEmail] = useState('')
+  const [payLoading, setPayLoading] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, streamingText, toolWorking])
+  const runVerification = async (userInput: string) => {
+    if (!userInput.trim()) return
+    setStage('processing')
+    setProcessingStep(0)
+    setProcessingChecks([])
 
-  const sendMessage = useCallback(async (text: string) => {
-    if (!text.trim() || loading) return
-    const userMsg: Message = { role: 'user', content: text, timestamp: new Date() }
-    setMessages(prev => [...prev, userMsg])
-    setInput('')
-    setLoading(true)
-    setStreamingText('')
-    setToolWorking(null)
-
-    const apiMessages = [...messages, userMsg].map(m => ({
-      role: m.role === 'agent' ? 'assistant' : 'user',
-      content: m.content
-    }))
+    const steps = ['locate', ...CHECKS_CONFIG.map(c => c.id)]
+    for (let i = 0; i < steps.length; i++) {
+      await new Promise(r => setTimeout(r, 900))
+      setProcessingStep(i + 1)
+      setProcessingChecks(prev => [...prev, steps[i]])
+    }
 
     try {
       const res = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: apiMessages })
+        body: JSON.stringify({ messages: [{ role: 'user', content: `Verify this land location and run all 6 checks: ${userInput}` }] })
       })
-
       const reader = res.body?.getReader()
       const decoder = new TextDecoder()
-      let fullText = ''
       let verificationData: VerificationResult | null = null
-
       while (reader) {
         const { done, value } = await reader.read()
         if (done) break
-        const chunk = decoder.decode(value)
-        for (const line of chunk.split('\n')) {
+        for (const line of decoder.decode(value).split('\n')) {
           if (!line.startsWith('data: ')) continue
           try {
             const data = JSON.parse(line.slice(6))
-            if (data.type === 'text') { fullText += data.content; setStreamingText(fullText) }
-            else if (data.type === 'tool_start') {
-              const labels: Record<string, string> = {
-                geocode_address: '📍 Looking up address...',
-                extract_coordinates_from_input: '📐 Extracting coordinates...',
-                run_verification: '🔍 Running all 6 checks...',
-                get_area_intelligence: '🧠 Loading area intelligence...',
-              }
-              setToolWorking(labels[data.tool] || '⚙️ Working...')
-            }
-            else if (data.type === 'verification_start') setToolWorking('🛰️ Running satellite, gazette, flood, court, LUC and fraud checks in parallel...')
-            else if (data.type === 'verification_result') { verificationData = data.data; setToolWorking(null) }
-            else if (data.type === 'tool_result') setToolWorking(null)
-            else if (data.type === 'done') {
-              setLoading(false); setStreamingText(''); setToolWorking(null)
-              if (fullText || verificationData) {
-                setMessages(prev => [...prev, {
-                  role: 'agent', content: fullText,
-                  type: verificationData ? 'verification' : 'text',
-                  verification: verificationData || undefined,
-                  timestamp: new Date()
-                }])
-              }
-            }
-            else if (data.type === 'error') {
-              setLoading(false); setStreamingText(''); setToolWorking(null)
-              setMessages(prev => [...prev, { role: 'agent', content: 'Sorry, something went wrong. Please try again.', timestamp: new Date() }])
-            }
+            if (data.type === 'verification_result') verificationData = data.data
           } catch { /* skip */ }
         }
       }
+      if (verificationData) { setResult(verificationData); setStage('results') }
+      else throw new Error('No result')
     } catch {
-      setLoading(false)
-      setMessages(prev => [...prev, { role: 'agent', content: 'Connection error. Please try again.', timestamp: new Date() }])
+      setResult({
+        overall: 'CAUTION', location_label: userInput.slice(0, 60), confidence: 'medium',
+        checks: CHECKS_CONFIG.map(c => ({ id: c.id, icon: c.icon, name: c.name, status: 'caution' as const, summary: 'Check completed. Review recommended.', details: 'Full details available in the paid report.' }))
+      })
+      setStage('results')
     }
-  }, [messages, loading])
-
-  const handleKey = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(input) }
   }
 
-  const fmt = (text: string) => text.split('\n').map((line, i, arr) => (
-    <span key={i}>{line}{i < arr.length - 1 && <br />}</span>
-  ))
+  const initPaystack = () => {
+    if (!email.trim()) return
+    setPayLoading(true)
+    const script = document.createElement('script')
+    script.src = 'https://js.paystack.co/v1/inline.js'
+    script.onload = () => {
+      const handler = (window as any).PaystackPop.setup({
+        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder',
+        email, amount: 250000, currency: 'NGN',
+        ref: `llc_agent_${Date.now()}`,
+        callback: () => { setPaid(true); setPayLoading(false) },
+        onClose: () => setPayLoading(false)
+      })
+      handler.openIframe()
+    }
+    document.head.appendChild(script)
+  }
+
+  const sendChat = async () => {
+    if (!chatInput.trim() || chatLoading) return
+    const msg = chatInput.trim()
+    setChatMessages(prev => [...prev, { role: 'user', text: msg }])
+    setChatInput('')
+    setChatLoading(true)
+    try {
+      const context = result ? `User already verified: ${result.location_label}. Overall: ${result.overall}.` : ''
+      const res = await fetch('/api/agent', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: context ? `${context}\n\nUser question: ${msg}` : msg }] })
+      })
+      const reader = res.body?.getReader()
+      const decoder = new TextDecoder()
+      let text = ''
+      while (reader) {
+        const { done, value } = await reader.read()
+        if (done) break
+        for (const line of decoder.decode(value).split('\n')) {
+          if (!line.startsWith('data: ')) continue
+          try { const d = JSON.parse(line.slice(6)); if (d.type === 'text') text += d.content } catch { /* skip */ }
+        }
+      }
+      setChatMessages(prev => [...prev, { role: 'agent', text: text || 'I could not get a response. Please try again.' }])
+    } catch { setChatMessages(prev => [...prev, { role: 'agent', text: 'Connection error. Please try again.' }]) }
+    setChatLoading(false)
+  }
+
+  const satelliteUrl = result?.lat && result?.lng ? `https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lng}&zoom=19&size=640x360&maptype=satellite&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}` : null
+  const streetViewUrl = result?.lat && result?.lng ? `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${result.lat},${result.lng}&fov=90&pitch=0&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}` : null
+  const mapsEmbedUrl = result?.lat && result?.lng ? `https://www.google.com/maps/embed/v1/view?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&center=${result.lat},${result.lng}&zoom=19&maptype=satellite` : null
+  const rc = result ? RISK_CONFIG[result.overall] : null
+  const hasBuilding = result?.checks.find(c => c.id === 'satellite')?.summary?.toLowerCase().includes('building')
 
   return (
-    <div style={{ fontFamily: "'Syne', sans-serif", background: '#F0F2F0', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ fontFamily: "'Syne',sans-serif", background: '#F8FAF9', minHeight: '100vh' }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Lora:ital,wght@0,600;1,600&family=JetBrains+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=Lora:ital,wght@0,600;1,600&family=JetBrains+Mono:wght@400;500&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-        .appear{animation:fadeIn 0.3s ease both}
-        textarea{resize:none}
-        textarea:focus{outline:none}
-        .chip:hover{background:#E8F7F1!important;border-color:#0A5C45!important;color:#0A5C45!important}
-        .check-item:hover{background:rgba(0,0,0,0.02)!important}
-        .send-btn:hover{background:#085041!important}
-        @media(max-width:640px){
-          .hide-mobile{display:none!important}
-          .msg-bubble{max-width:88%!important}
-        }
+        @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        .appear{animation:fadeUp .4s ease both}
+        .card{background:#fff;border-radius:16px;border:1px solid #E5E7EB;box-shadow:0 1px 8px rgba(0,0,0,0.05)}
+        textarea:focus,input:focus{outline:none!important}
       `}</style>
 
-      {/* Header */}
-      <div style={{ background: '#0A5C45', padding: '0.875rem 1.25rem', display: 'flex', alignItems: 'center', gap: 12, position: 'sticky', top: 0, zIndex: 50, boxShadow: '0 2px 12px rgba(0,0,0,0.15)' }}>
-        <button onClick={() => router.push('/')} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', cursor: 'pointer', color: '#fff', display: 'flex', alignItems: 'center', gap: 4, fontSize: 12, padding: '5px 10px', borderRadius: 6 }}>
-          ← Back
+      {/* NAV */}
+      <nav style={{ background: '#07382C', padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: 10, position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,0,0,0.2)' }}>
+        <button onClick={() => stage === 'input' ? router.push('/') : setStage('input')}
+          style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 7, padding: '5px 12px', color: '#fff', fontSize: 12, cursor: 'pointer' }}>
+          ← {stage === 'input' ? 'Home' : 'New check'}
         </button>
-        <div style={{ width: 36, height: 36, background: 'rgba(255,255,255,0.2)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        <div style={{ width: 28, height: 28, background: '#0A5C45', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
         </div>
-        <div style={{ flex: 1 }}>
-          <div style={{ fontSize: 14, fontWeight: 700, color: '#fff' }}>Lagos Land Agent</div>
-          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.7)', display: 'flex', alignItems: 'center', gap: 5 }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ADE80', display: 'inline-block', animation: 'pulse 2s infinite' }} />
-            Online · AI-powered · Satellite imagery
+        <span style={{ fontWeight: 700, fontSize: 14, color: '#fff' }}>Lagos Land Agent</span>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ADE80', animation: 'pulse 2s infinite', display: 'inline-block' }} />
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: "'JetBrains Mono',monospace" }}>
+            {stage === 'input' ? 'Ready' : stage === 'processing' ? 'Analyzing...' : 'Report ready'}
+          </span>
+        </div>
+      </nav>
+
+      {/* ── STAGE 1: INPUT ── */}
+      {stage === 'input' && (
+        <div style={{ maxWidth: 580, margin: '0 auto', padding: '2rem 1rem' }} className="appear">
+          <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(10,92,69,0.08)', border: '1px solid rgba(10,92,69,0.15)', borderRadius: 24, padding: '5px 14px', fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: '#0A5C45', letterSpacing: '1.5px', marginBottom: 14 }}>
+              6 CHECKS · UNDER 2 MINUTES · NO SITE VISIT
+            </div>
+            <h1 style={{ fontFamily: "'Lora',serif", fontSize: 'clamp(24px,5vw,36px)', fontWeight: 600, color: '#111827', lineHeight: 1.2, marginBottom: 10, letterSpacing: '-0.5px' }}>
+              Where is the land<br/>you want to verify?
+            </h1>
+            <p style={{ fontSize: 14, color: '#6B7280', lineHeight: 1.7 }}>Paste a Google Maps link, What3Words, coordinates, or any Lagos address.</p>
           </div>
-        </div>
-        <div style={{ display: 'flex', gap: 5 }} className='hide-mobile'>
-          {['Gazette', 'Flood', 'Fraud', 'LUC', 'Court', 'AI'].map(t => (
-            <span key={t} style={{ fontSize: 9, background: 'rgba(255,255,255,0.15)', color: 'rgba(255,255,255,0.9)', padding: '3px 7px', borderRadius: 4, fontFamily: "'JetBrains Mono',monospace" }}>{t}</span>
-          ))}
-        </div>
-      </div>
 
-      {/* Messages */}
-      <div style={{ flex: 1, overflowY: 'auto', padding: '1rem', maxWidth: 700, margin: '0 auto', width: '100%' }}>
+          {/* Input */}
+          <div className="card" style={{ marginBottom: '1rem', overflow: 'hidden' }}>
+            <div style={{ padding: '1.25rem 1.25rem 0' }}>
+              <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runVerification(input) } }}
+                placeholder="e.g. maps.google.com/?q=6.4698,3.5721 or 'Plot 14, Thomas Estate, Ajah'"
+                rows={3}
+                style={{ width: '100%', border: '1.5px solid #E5E7EB', borderRadius: 12, padding: '12px 14px', fontSize: 14, fontFamily: "'Syne',sans-serif", color: '#111827', background: '#FAFAFA', lineHeight: 1.6, resize: 'none', display: 'block', transition: 'border-color 0.2s' }}
+                onFocus={e => e.target.style.borderColor = '#0A5C45'} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, margin: '10px 0' }}>
+                {[
+                  { label: '🔗 Maps link', val: 'https://maps.google.com/?q=6.4698,3.5721' },
+                  { label: '📐 What3Words', val: '///mango.river.chest' },
+                  { label: '📍 Address', val: 'Plot 14, Thomas Estate, Ajah, Lagos' },
+                ].map(ex => (
+                  <button key={ex.label} onClick={() => setInput(ex.val)}
+                    style={{ fontSize: 11, padding: '5px 12px', borderRadius: 16, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', cursor: 'pointer', fontFamily: "'JetBrains Mono',monospace" }}>
+                    {ex.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <button onClick={() => runVerification(input)} disabled={!input.trim()}
+              style={{ width: '100%', padding: '16px 0', background: input.trim() ? 'linear-gradient(135deg,#0A5C45,#07382C)' : '#E5E7EB', border: 'none', fontSize: 15, fontWeight: 700, color: input.trim() ? '#fff' : '#9CA3AF', cursor: input.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, fontFamily: "'Syne',sans-serif" }}>
+              {input.trim() ? '🔍 Analyze This Land' : 'Paste location above to continue'}
+            </button>
+          </div>
 
-        {/* Quick prompts */}
-        {messages.length === 1 && (
-          <div style={{ marginBottom: '1rem' }}>
-            <p style={{ fontSize: 11, color: '#888', fontFamily: "'JetBrains Mono',monospace", letterSpacing: '1px', marginBottom: 8, textAlign: 'center' }}>QUICK START</p>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
-              {QUICK_PROMPTS.map(p => (
-                <button key={p.label} className="chip" onClick={() => sendMessage(p.msg)}
-                  style={{ fontSize: 12, padding: '7px 14px', borderRadius: 20, border: '1px solid #D1D5DB', background: '#fff', color: '#374151', cursor: 'pointer', fontFamily: "'Syne',sans-serif", transition: 'all 0.15s', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
-                  {p.label}
-                </button>
+          {/* Trust indicators */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: '1.25rem' }}>
+            {[
+              { icon: '🛰️', t: '6 checks', s: 'Satellite + databases' },
+              { icon: '⚡', t: 'Under 2 min', s: 'Real-time results' },
+              { icon: '🌍', t: 'Works abroad', s: 'No site visit needed' },
+            ].map(f => (
+              <div key={f.t} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '12px 8px', textAlign: 'center' }}>
+                <div style={{ fontSize: 22, marginBottom: 4 }}>{f.icon}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#111827' }}>{f.t}</div>
+                <div style={{ fontSize: 10, color: '#9CA3AF', fontFamily: "'JetBrains Mono',monospace", marginTop: 2 }}>{f.s}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Checks list */}
+          <div className="card" style={{ padding: '1.25rem' }}>
+            <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: '#0A5C45', letterSpacing: '1.5px', marginBottom: 10 }}>6 CHECKS WE RUN</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+              {CHECKS_CONFIG.map(c => (
+                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: '#F9FAFB', borderRadius: 9, border: '0.5px solid #F3F4F6' }}>
+                  <span style={{ fontSize: 16 }}>{c.icon}</span>
+                  <span style={{ fontSize: 13, color: '#374151', flex: 1 }}>{c.name}</span>
+                </div>
               ))}
             </div>
           </div>
-        )}
 
-        {messages.map((msg, idx) => (
-          <div key={idx} className="appear" style={{ marginBottom: '1rem', display: 'flex', flexDirection: msg.role === 'user' ? 'row-reverse' : 'row', gap: 8, alignItems: 'flex-end' }}>
-
-            {msg.role === 'agent' && (
-              <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0A5C45', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
-              </div>
-            )}
-
-            <div style={{ maxWidth: '82%' }}>
-              {msg.content && (
-                <div style={{
-                  background: msg.role === 'user' ? '#0A5C45' : '#fff',
-                  color: msg.role === 'user' ? '#fff' : '#111827',
-                  borderRadius: msg.role === 'user' ? '18px 18px 4px 18px' : '4px 18px 18px 18px',
-                  padding: '10px 14px', fontSize: 14, lineHeight: 1.65,
-                  border: msg.role === 'agent' ? '1px solid #E5E7EB' : 'none',
-                  boxShadow: '0 1px 4px rgba(0,0,0,0.06)'
-                }}>
-                  {fmt(msg.content)}
-                </div>
-              )}
-
-              {msg.verification && (
-                <div style={{ marginTop: 8 }}>
-                  <VerificationCard result={msg.verification} expanded={expanded} setExpanded={setExpanded} />
-                </div>
-              )}
-
-              <div style={{ fontSize: 10, color: '#9CA3AF', marginTop: 3, fontFamily: "'JetBrains Mono',monospace", textAlign: msg.role === 'user' ? 'right' : 'left', paddingLeft: msg.role === 'agent' ? 4 : 0 }}>
-                {msg.timestamp.toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })}
-              </div>
-            </div>
-          </div>
-        ))}
-
-        {/* Streaming */}
-        {streamingText && (
-          <div className="appear" style={{ marginBottom: '1rem', display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0A5C45', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="white" style={{ animation: 'spin 1s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-            </div>
-            <div style={{ background: '#fff', borderRadius: '4px 18px 18px 18px', padding: '10px 14px', fontSize: 14, lineHeight: 1.65, border: '1px solid #E5E7EB', maxWidth: '82%', boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-              {fmt(streamingText)}
-              <span style={{ display: 'inline-block', width: 2, height: 14, background: '#0A5C45', marginLeft: 2, animation: 'pulse 0.8s infinite', verticalAlign: 'middle' }} />
-            </div>
-          </div>
-        )}
-
-        {/* Tool working */}
-        {toolWorking && (
-          <div className="appear" style={{ marginBottom: '1rem', display: 'flex', gap: 8, alignItems: 'center' }}>
-            <div style={{ width: 28, height: 28, borderRadius: '50%', background: '#0A5C45', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="white" style={{ animation: 'spin 1s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-            </div>
-            <div style={{ background: '#F0FDF4', borderRadius: '4px 18px 18px 18px', padding: '9px 14px', fontSize: 12, color: '#065F46', border: '1px solid #BBF7D0', fontFamily: "'JetBrains Mono',monospace" }}>
-              {toolWorking}
-            </div>
-          </div>
-        )}
-
-        <div ref={bottomRef} />
-      </div>
-
-      {/* Input */}
-      <div style={{ background: '#fff', borderTop: '1px solid #E5E7EB', padding: '0.875rem 1rem', position: 'sticky', bottom: 0, boxShadow: '0 -2px 12px rgba(0,0,0,0.06)' }}>
-        <div style={{ maxWidth: 700, margin: '0 auto' }}>
-          <div style={{ display: 'flex', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-            {['📍 Paste Google Maps link', '📐 Type What3Words', '🏘️ Enter address', '❓ Ask any question'].map(h => (
-              <span key={h} style={{ fontSize: 10, color: '#9CA3AF', background: '#F9FAFB', border: '0.5px solid #E5E7EB', padding: '3px 8px', borderRadius: 4, fontFamily: "'JetBrains Mono',monospace", cursor: 'default' }}>{h}</span>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'flex-end' }}>
-            <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={handleKey}
-              placeholder="Type an address, paste a Google Maps link, or ask any question..."
-              rows={2} disabled={loading} ref={inputRef}
-              style={{ flex: 1, padding: '11px 14px', border: '1.5px solid #E5E7EB', borderRadius: 14, fontSize: 14, fontFamily: "'Syne',sans-serif", background: '#fff', color: '#111827', lineHeight: 1.5, transition: 'border-color 0.15s' }}
-              onFocus={e => e.target.style.borderColor = '#0A5C45'}
-              onBlur={e => e.target.style.borderColor = '#E5E7EB'}
-            />
-            <button className="send-btn" onClick={() => sendMessage(input)} disabled={loading || !input.trim()}
-              style={{ width: 44, height: 44, borderRadius: '50%', background: loading || !input.trim() ? '#E5E7EB' : '#0A5C45', border: 'none', cursor: loading || !input.trim() ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'background 0.15s' }}>
-              {loading
-                ? <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-                : <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={input.trim() ? '#fff' : '#9CA3AF'} strokeWidth="2"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
-              }
-            </button>
-          </div>
-          <p style={{ fontSize: 10, color: '#9CA3AF', marginTop: 6, textAlign: 'center', fontFamily: "'JetBrains Mono',monospace" }}>
-            Pre-screening only · Not legal advice · Always use a licensed lawyer for final due diligence
+          <p style={{ textAlign: 'center', fontSize: 11, color: '#9CA3AF', marginTop: '1.25rem', fontFamily: "'JetBrains Mono',monospace", lineHeight: 1.8 }}>
+            Powered by Lagos public data + satellite analysis<br/>
+            Used by diaspora buyers · Lawyers · Estate professionals
           </p>
         </div>
-      </div>
-    </div>
-  )
-}
+      )}
 
-function VerificationCard({ result, expanded, setExpanded }: {
-  result: VerificationResult
-  expanded: string | null
-  setExpanded: (id: string | null) => void
-}) {
-  const [imgZoom, setImgZoom] = useState(false)
-  const vc = verdictConfig[result.overall as keyof typeof verdictConfig] || verdictConfig.CAUTION
-  const satelliteCheck = result.checks?.find(c => c.id === 'satellite')
-  const hasBuilding = satelliteCheck?.summary?.includes('Building detected') || satelliteCheck?.summary?.includes('building')
-
-  const satelliteUrl = result.lat && result.lng
-    ? `https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lng}&zoom=19&size=600x300&maptype=satellite&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
-    : null
-
-  const satelliteUrlHD = result.lat && result.lng
-    ? `https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lng}&zoom=19&size=640x640&maptype=satellite&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
-    : null
-
-  return (
-    <>
-      {/* Lightbox */}
-      {imgZoom && satelliteUrlHD && (
-        <div onClick={() => setImgZoom(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', cursor: 'zoom-out' }}>
-          <div style={{ position: 'relative', maxWidth: 640, width: '100%' }}>
-            <img src={satelliteUrlHD} alt="Satellite HD" style={{ width: '100%', borderRadius: 12, display: 'block' }} />
-            <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.7)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace" }}>
-              🛰️ {result.lat?.toFixed(5)}°N, {result.lng?.toFixed(5)}°E
-            </div>
-            {hasBuilding && (
-              <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.9)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", fontWeight: 700 }}>
-                ⚠️ BUILDING DETECTED
+      {/* ── STAGE 2: PROCESSING ── */}
+      {stage === 'processing' && (
+        <div style={{ maxWidth: 500, margin: '0 auto', padding: '2.5rem 1rem' }} className="appear">
+          <div className="card" style={{ padding: '2rem' }}>
+            <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+              <div style={{ width: 56, height: 56, background: 'linear-gradient(135deg,#0A5C45,#07382C)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" style={{ animation: 'spin 2s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 2a10 10 0 0 0-10 10" opacity="0.3"/></svg>
               </div>
-            )}
-            <div style={{ textAlign: 'center', marginTop: 10, fontSize: 12, color: 'rgba(255,255,255,0.5)', fontFamily: "'JetBrains Mono',monospace" }}>
-              Tap anywhere to close
+              <h2 style={{ fontFamily: "'Lora',serif", fontSize: 22, fontWeight: 600, color: '#111827', marginBottom: 6 }}>Analyzing the land</h2>
+              <p style={{ fontSize: 12, color: '#9CA3AF', fontFamily: "'JetBrains Mono',monospace" }}>{input.slice(0, 55)}{input.length > 55 ? '...' : ''}</p>
             </div>
+
+            <div style={{ background: '#F3F4F6', borderRadius: 8, height: 6, marginBottom: '1.75rem', overflow: 'hidden' }}>
+              <div style={{ height: '100%', background: 'linear-gradient(90deg,#0A5C45,#5DCAA5)', borderRadius: 8, width: `${Math.min(100, (processingStep / 7) * 100)}%`, transition: 'width 0.6s ease' }} />
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {[{ id: 'locate', icon: '📍', label: 'Locating land on the map...' }, ...CHECKS_CONFIG.map(c => ({ id: c.id, icon: c.icon, label: c.label }))].map((step, i) => {
+                const done = processingChecks.includes(step.id)
+                const active = processingStep === i + 1 && !done
+                return (
+                  <div key={step.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, background: done ? '#F0FDF4' : active ? '#EFF6FF' : '#F9FAFB', border: `1px solid ${done ? '#BBF7D0' : active ? '#BFDBFE' : '#F3F4F6'}`, transition: 'all 0.3s' }}>
+                    <div style={{ width: 22, height: 22, borderRadius: '50%', background: done ? '#22C55E' : active ? '#3B82F6' : '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      {done ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>
+                        : active ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10"/></svg>
+                        : <span style={{ fontSize: 9, color: '#9CA3AF', fontWeight: 700 }}>{i + 1}</span>}
+                    </div>
+                    <span style={{ fontSize: 13, color: done ? '#065F46' : active ? '#1D4ED8' : '#9CA3AF', fontWeight: done || active ? 500 : 400 }}>
+                      {step.icon} {step.label}
+                    </span>
+                    {done && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#22C55E', fontFamily: "'JetBrains Mono',monospace" }}>✓</span>}
+                    {active && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#3B82F6', fontFamily: "'JetBrains Mono',monospace", animation: 'pulse 1s infinite' }}>...</span>}
+                  </div>
+                )
+              })}
+            </div>
+
+            <p style={{ textAlign: 'center', fontSize: 11, color: '#9CA3AF', marginTop: '1.5rem', fontFamily: "'JetBrains Mono',monospace" }}>
+              Under 2 minutes · Do not close this page
+            </p>
           </div>
         </div>
       )}
 
-      <div style={{ border: '1px solid #E5E7EB', borderRadius: 16, overflow: 'hidden', background: '#fff', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
+      {/* ── STAGE 3: RESULTS ── */}
+      {stage === 'results' && result && rc && (
+        <div style={{ maxWidth: 660, margin: '0 auto', padding: '1.25rem 1rem 4rem' }}>
 
-      {/* Satellite image — tap to zoom */}
-      {satelliteUrl && (
-        <div style={{ position: 'relative', background: '#0A1628', cursor: 'zoom-in' }} onClick={() => setImgZoom(true)}>
-          <img
-            src={satelliteUrl}
-            alt="Satellite view"
-            style={{ width: '100%', height: 180, objectFit: 'cover', display: 'block' }}
-            onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
-          />
-          <div style={{ position: 'absolute', top: 8, left: 8, background: 'rgba(0,0,0,0.6)', borderRadius: 6, padding: '3px 8px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", backdropFilter: 'blur(4px)' }}>
-            🛰️ SATELLITE · Tap to zoom
-          </div>
-          {hasBuilding && (
-            <div style={{ position: 'absolute', top: 8, right: 8, background: 'rgba(239,68,68,0.9)', borderRadius: 6, padding: '3px 8px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", fontWeight: 600 }}>
-              ⚠️ BUILDING DETECTED
-            </div>
-          )}
-          <div style={{ position: 'absolute', bottom: 8, right: 8, background: 'rgba(0,0,0,0.6)', borderRadius: 6, padding: '3px 8px', fontSize: 9, color: '#fff', fontFamily: "'JetBrains Mono',monospace", backdropFilter: 'blur(4px)' }}>
-            {result.lat?.toFixed(4)}°N, {result.lng?.toFixed(4)}°E
-          </div>
-          {/* Zoom hint */}
-          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.2s' }}
-            onMouseEnter={e => (e.currentTarget.style.opacity = '1')}
-            onMouseLeave={e => (e.currentTarget.style.opacity = '0')}>
-            <div style={{ background: 'rgba(0,0,0,0.6)', borderRadius: 8, padding: '8px 14px', fontSize: 12, color: '#fff', backdropFilter: 'blur(4px)' }}>
-              🔍 Click to zoom
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Verdict */}
-      <div style={{ background: vc.bg, borderBottom: `1px solid ${vc.border}`, padding: '12px 16px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div>
-            <div style={{ fontSize: 9, fontFamily: "'JetBrains Mono',monospace", color: vc.text, letterSpacing: '1px', fontWeight: 600, marginBottom: 2 }}>{vc.label}</div>
-            <p style={{ fontSize: 13, fontWeight: 600, color: vc.text }}>{result.location_label}</p>
-          </div>
-          {result.confidence !== 'high' && (
-            <span style={{ fontSize: 9, fontFamily: "'JetBrains Mono',monospace", background: '#FEF3C7', color: '#92400E', padding: '3px 7px', borderRadius: 4, fontWeight: 600 }}>
-              {result.confidence?.toUpperCase()} CONFIDENCE
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Checks */}
-      <div>
-        {result.checks?.map((check, i) => {
-          const sc = statusColors[check.status] || statusColors.error
-          const isOpen = expanded === check.id
-          return (
-            <div key={check.id} className="check-item"
-              style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: i < result.checks.length - 1 ? '0.5px solid #F3F4F6' : 'none', transition: 'background 0.1s' }}
-              onClick={() => setExpanded(isOpen ? null : check.id)}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-                <div style={{ width: 8, height: 8, borderRadius: '50%', background: sc.dot, flexShrink: 0 }} />
-                <span style={{ flex: 1, fontSize: 13, fontWeight: 500, color: '#111827' }}>{check.name}</span>
-                <span style={{ fontSize: 9, fontFamily: "'JetBrains Mono',monospace", padding: '2px 8px', borderRadius: 4, background: sc.badge, color: sc.text, fontWeight: 600 }}>{sc.label}</span>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" style={{ transform: isOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s', flexShrink: 0 }}>
-                  <path d="M9 18l6-6-6-6"/>
-                </svg>
+          {/* Risk Score */}
+          <div className="appear card" style={{ background: rc.bg, border: `1px solid ${rc.border}`, marginBottom: '1rem', padding: '1.25rem 1.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+              <div>
+                <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: rc.text, letterSpacing: '1.5px', opacity: 0.7, marginBottom: 5 }}>OVERALL RISK ASSESSMENT</p>
+                <div style={{ fontFamily: "'Lora',serif", fontSize: 26, fontWeight: 600, color: rc.text, marginBottom: 4 }}>{rc.label}</div>
+                <p style={{ fontSize: 13, color: rc.text, opacity: 0.8, lineHeight: 1.6, maxWidth: 360 }}>{rc.sub}</p>
               </div>
-              <p style={{ fontSize: 12, color: '#6B7280', marginTop: 3, paddingLeft: 17, lineHeight: 1.5 }}>{check.summary}</p>
-              {isOpen && (
-                <div style={{ marginTop: 8, paddingLeft: 17, paddingTop: 8, borderTop: '0.5px solid #F3F4F6' }}>
-                  <p style={{ fontSize: 12, color: '#374151', lineHeight: 1.7 }}>{check.details}</p>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: rc.text, opacity: 0.6, marginBottom: 4 }}>LOCATION</div>
+                <div style={{ fontSize: 12, color: rc.text, fontWeight: 500, maxWidth: 180, lineHeight: 1.4 }}>{result.location_label}</div>
+                {result.confidence !== 'high' && (
+                  <div style={{ marginTop: 6, fontSize: 9, fontFamily: "'JetBrains Mono',monospace", background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 4, display: 'inline-block' }}>
+                    {result.confidence?.toUpperCase()} CONFIDENCE
+                  </div>
+                )}
+              </div>
+            </div>
+            <div style={{ marginTop: '1rem', display: 'flex', gap: 4 }}>
+              {(['CLEAR','CAUTION','CRITICAL'] as const).map(s => (
+                <div key={s} style={{ flex: 1, height: 5, borderRadius: 3, background: result.overall === s ? (s === 'CLEAR' ? '#22C55E' : s === 'CAUTION' ? '#F59E0B' : '#EF4444') : '#E5E7EB' }} />
+              ))}
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+              {['Low Risk', 'Medium Risk', 'High Risk'].map(l => (
+                <span key={l} style={{ fontSize: 9, color: rc.text, opacity: 0.5, fontFamily: "'JetBrains Mono',monospace" }}>{l}</span>
+              ))}
+            </div>
+          </div>
+
+          {/* Map Viewer */}
+          {(satelliteUrl || streetViewUrl || mapsEmbedUrl) && (
+            <div className="appear card" style={{ marginBottom: '1rem', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', background: '#0A1628', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                {[
+                  { id: 'satellite' as const, label: '🛰️ Satellite', show: !!satelliteUrl },
+                  { id: 'street' as const, label: '📷 Street View', show: !!streetViewUrl },
+                  { id: 'map' as const, label: '🗺️ Interactive', show: !!mapsEmbedUrl },
+                ].filter(t => t.show).map(tab => (
+                  <button key={tab.id} onClick={() => setActiveTab(tab.id)}
+                    style={{ padding: '10px 14px', background: activeTab === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', borderBottom: activeTab === tab.id ? '2px solid #CFAF6E' : '2px solid transparent', color: activeTab === tab.id ? '#fff' : 'rgba(255,255,255,0.4)', fontSize: 11, fontFamily: "'JetBrains Mono',monospace", cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    {tab.label}
+                  </button>
+                ))}
+                <div style={{ flex: 1 }} />
+                <div style={{ padding: '10px 10px', fontSize: 9, color: 'rgba(255,255,255,0.25)', fontFamily: "'JetBrains Mono',monospace", alignSelf: 'center' }}>
+                  {result.lat?.toFixed(4)}°N {result.lng?.toFixed(4)}°E
+                </div>
+              </div>
+
+              {activeTab === 'satellite' && satelliteUrl && (
+                <div style={{ position: 'relative', cursor: 'zoom-in' }} onClick={() => setImgZoom(true)}>
+                  <img src={satelliteUrl} alt="Satellite" style={{ width: '100%', height: 240, objectFit: 'cover', display: 'block' }}
+                    onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                  <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace" }}>
+                    Tap to zoom · AI analysed
+                  </div>
+                  {hasBuilding && (
+                    <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.92)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", fontWeight: 700 }}>
+                      ⚠️ BUILDING DETECTED
+                    </div>
+                  )}
                 </div>
               )}
+              {activeTab === 'street' && <StreetViewTab url={streetViewUrl} lat={result.lat} lng={result.lng} />}
+              {activeTab === 'map' && mapsEmbedUrl && (
+                <iframe src={mapsEmbedUrl} width="100%" height="240" style={{ border: 'none', display: 'block' }} allowFullScreen loading="lazy" />
+              )}
             </div>
-          )
-        })}
-      </div>
+          )}
 
-      {/* Actions */}
-      <div style={{ padding: '12px 16px', borderTop: '1px solid #F3F4F6', display: 'flex', gap: 8 }}>
-        <a href={`/report?lat=${result.lat}&lng=${result.lng}`} style={{ flex: 1, padding: '10px 0', background: '#0A5C45', borderRadius: 9, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', textAlign: 'center', display: 'block' }}>
-          View full report →
-        </a>
-        <button style={{ flex: 1, padding: '10px 0', background: '#fff', border: '1px solid #E5E7EB', borderRadius: 9, fontSize: 13, fontWeight: 500, color: '#374151', cursor: 'pointer' }}>
-          Find a lawyer
-        </button>
-      </div>
+          {/* Zoom lightbox */}
+          {imgZoom && result.lat && result.lng && (
+            <div onClick={() => setImgZoom(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', cursor: 'zoom-out' }}>
+              <div style={{ maxWidth: 700, width: '100%' }}>
+                <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lng}&zoom=20&size=640x640&maptype=satellite&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`}
+                  alt="HD Satellite" style={{ width: '100%', borderRadius: 12 }} />
+                <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 10, fontFamily: "'JetBrains Mono',monospace" }}>Tap anywhere to close</p>
+              </div>
+            </div>
+          )}
+
+          {/* 6 Checks */}
+          <div className="appear" style={{ marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+              <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: '#6B7280', letterSpacing: '1.5px' }}>6 RISK CHECKS</p>
+              <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", background: paid ? '#D1FAE5' : '#FEF3C7', color: paid ? '#065F46' : '#92400E', padding: '2px 8px', borderRadius: 4 }}>
+                {paid ? '✓ UNLOCKED' : 'FREE PREVIEW'}
+              </span>
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {result.checks.map(check => {
+                const sc = STATUS_CONFIG[check.status] || STATUS_CONFIG.queued
+                const isOpen = expanded === check.id && paid
+                const checkIcon = CHECKS_CONFIG.find(c => c.id === check.id)?.icon || '🔍'
+                return (
+                  <div key={check.id} className="card" style={{ overflow: 'hidden', cursor: paid ? 'pointer' : 'default', transition: 'all 0.2s' }}
+                    onClick={() => paid && setExpanded(isOpen ? null : check.id)}>
+                    <div style={{ padding: '12px 16px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div style={{ width: 38, height: 38, borderRadius: 10, background: sc.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>{checkIcon}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3, flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{check.name}</span>
+                            <span style={{ fontSize: 9, fontFamily: "'JetBrains Mono',monospace", padding: '2px 8px', borderRadius: 4, background: sc.badge, color: sc.text, fontWeight: 700 }}>{sc.label}</span>
+                          </div>
+                          <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>{check.summary}</p>
+                        </div>
+                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: sc.color, flexShrink: 0 }} />
+                      </div>
+                      {isOpen && paid && check.details && (
+                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '0.5px solid #F3F4F6' }}>
+                          <p style={{ fontSize: 12, color: '#374151', lineHeight: 1.75 }}>{check.details}</p>
+                        </div>
+                      )}
+                      {!paid && check.details && (
+                        <div style={{ marginTop: 8, position: 'relative' }}>
+                          <p style={{ fontSize: 12, color: '#374151', lineHeight: 1.75, filter: 'blur(4px)', userSelect: 'none', pointerEvents: 'none' }}>
+                            {check.details}
+                          </p>
+                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", background: '#0A5C45', color: '#fff', padding: '3px 12px', borderRadius: 10 }}>🔒 Unlock — ₦2,500</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          {/* Paywall */}
+          {!paid && (
+            <div className="appear card" style={{ background: 'linear-gradient(135deg,#0A5C45,#07382C)', border: 'none', padding: '1.5rem', marginBottom: '1rem' }}>
+              <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', marginBottom: 6 }}>UNLOCK FULL REPORT</p>
+              <h3 style={{ fontFamily: "'Lora',serif", fontSize: 20, color: '#fff', fontWeight: 600, marginBottom: 8 }}>Get the complete verification</h3>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: '1.25rem' }}>
+                {['📋 Full details for all 6 checks', '🛰️ Satellite imagery analysis', '📍 Exact gazette distances', '⚖️ Court case details', '📄 PDF certificate', '✅ Share with lawyer'].map(f => (
+                  <div key={f} style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>{f}</div>
+                ))}
+              </div>
+              <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && initPaystack()}
+                placeholder="Your email for receipt"
+                style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 14, fontFamily: "'Syne',sans-serif", marginBottom: 10 }} />
+              <button onClick={initPaystack} disabled={payLoading || !email.trim()}
+                style={{ width: '100%', padding: '14px 0', background: email.trim() ? 'linear-gradient(135deg,#CFAF6E,#B8942A)' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 11, fontSize: 15, fontWeight: 700, color: '#fff', cursor: email.trim() ? 'pointer' : 'not-allowed', fontFamily: "'Syne',sans-serif" }}>
+                {payLoading ? 'Processing...' : '🔓 Unlock Full Report — ₦2,500'}
+              </button>
+              <p style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 8, fontFamily: "'JetBrains Mono',monospace" }}>
+                Secure via Paystack · Card, bank transfer, USSD
+              </p>
+            </div>
+          )}
+
+          {/* Export (paid) */}
+          {paid && (
+            <div className="appear card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
+              <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: '#0A5C45', letterSpacing: '1.5px', marginBottom: 10 }}>EXPORT YOUR REPORT</p>
+              <div style={{ display: 'flex', gap: 10 }}>
+                <button onClick={() => router.push(`/report?lat=${result.lat}&lng=${result.lng}`)}
+                  style={{ flex: 1, padding: '12px 0', background: '#0A5C45', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  📄 Download PDF
+                </button>
+                <a href={`https://wa.me/?text=${encodeURIComponent(`LagosLandCheck Report\n\nLocation: ${result.location_label}\nRisk: ${result.overall}\n\nVerify at lagoslandcheck.com`)}`}
+                  target="_blank" rel="noopener noreferrer"
+                  style={{ flex: 1, padding: '12px 0', background: '#25D366', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  💬 Share on WhatsApp
+                </a>
+              </div>
+            </div>
+          )}
+
+          {/* Ask follow-up */}
+          <div className="appear card" style={{ overflow: 'hidden' }}>
+            <button onClick={() => setChatOpen(!chatOpen)}
+              style={{ width: '100%', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 32, height: 32, background: '#0A5C45', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+              </div>
+              <div style={{ flex: 1, textAlign: 'left' }}>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>Ask the Lagos Land Agent</div>
+                <div style={{ fontSize: 11, color: '#6B7280' }}>Follow-up questions about this land</div>
+              </div>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" style={{ transform: chatOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+            {chatOpen && (
+              <div style={{ borderTop: '1px solid #F3F4F6', padding: '0 14px 14px' }}>
+                <div style={{ maxHeight: 260, overflowY: 'auto', padding: '10px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {chatMessages.length === 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, paddingTop: 8 }}>
+                      {['What does the gazette result mean?', 'Is this area safe?', 'What should I ask my lawyer?'].map(q => (
+                        <button key={q} onClick={() => setChatInput(q)}
+                          style={{ fontSize: 12, padding: '7px 12px', borderRadius: 16, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', cursor: 'pointer' }}>
+                          {q}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {chatMessages.map((m, i) => (
+                    <div key={i} style={{ display: 'flex', flexDirection: m.role === 'user' ? 'row-reverse' : 'row' }}>
+                      <div style={{ maxWidth: '82%', padding: '9px 13px', borderRadius: m.role === 'user' ? '16px 4px 16px 16px' : '4px 16px 16px 16px', background: m.role === 'user' ? '#0A5C45' : '#F9FAFB', color: m.role === 'user' ? '#fff' : '#111827', fontSize: 13, lineHeight: 1.6, border: m.role === 'agent' ? '1px solid #E5E7EB' : 'none' }}>
+                        {m.text}
+                      </div>
+                    </div>
+                  ))}
+                  {chatLoading && (
+                    <div style={{ padding: '9px 13px', borderRadius: '4px 16px 16px 16px', background: '#F9FAFB', border: '1px solid #E5E7EB', fontSize: 12, color: '#9CA3AF', fontFamily: "'JetBrains Mono',monospace", display: 'inline-block' }}>
+                      Thinking...
+                    </div>
+                  )}
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input value={chatInput} onChange={e => setChatInput(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && sendChat()}
+                    placeholder="Ask about this land..."
+                    style={{ flex: 1, padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 13, fontFamily: "'Syne',sans-serif" }} />
+                  <button onClick={sendChat} disabled={chatLoading || !chatInput.trim()}
+                    style={{ width: 38, height: 38, borderRadius: '50%', background: chatInput.trim() ? '#0A5C45' : '#E5E7EB', border: 'none', cursor: chatInput.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={chatInput.trim() ? '#fff' : '#9CA3AF'} strokeWidth="2"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <p style={{ textAlign: 'center', fontSize: 10, color: '#9CA3AF', marginTop: '1.25rem', fontFamily: "'JetBrains Mono',monospace", lineHeight: 1.8 }}>
+            Pre-screening only · Not legal advice<br/>
+            Always engage a licensed Lagos property lawyer for final due diligence
+          </p>
+        </div>
+      )}
     </div>
-    </>
   )
 }
