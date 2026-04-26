@@ -48,38 +48,95 @@ const STATUS_CONFIG = {
 
 function StreetViewTab({ url, lat, lng }: { url: string | null; lat?: number; lng?: number }) {
   const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading')
+  const [nearestUrl, setNearestUrl] = useState<string | null>(null)
+  const [nearestDist, setNearestDist] = useState<number | null>(null)
+
+  // When primary URL fails, try to find nearest Street View within 500m
+  const tryNearest = async () => {
+    if (!lat || !lng || !process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) return
+    try {
+      // Check metadata for nearest Street View
+      const offsets = [
+        [0.002, 0], [-0.002, 0], [0, 0.002], [0, -0.002],
+        [0.001, 0.001], [-0.001, 0.001], [0.001, -0.001], [-0.001, -0.001]
+      ]
+      for (const [dlat, dlng] of offsets) {
+        const checkLat = lat + dlat
+        const checkLng = lng + dlng
+        const metaUrl = `https://maps.googleapis.com/maps/api/streetview/metadata?location=${checkLat},${checkLng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+        const res = await fetch(metaUrl)
+        const data = await res.json()
+        if (data.status === 'OK') {
+          const dist = Math.round(Math.sqrt((dlat * 111000) ** 2 + (dlng * 111000) ** 2))
+          const nearest = `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${checkLat},${checkLng}&fov=90&pitch=0&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+          setNearestUrl(nearest)
+          setNearestDist(dist)
+          return
+        }
+      }
+    } catch { /* silently fail */ }
+  }
+
   if (!url) return (
-    <div style={{ height: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0A1628', color: 'rgba(255,255,255,0.4)', gap: 8 }}>
-      <span style={{ fontSize: 32 }}>📷</span>
-      <span style={{ fontSize: 13 }}>No Street View available</span>
-      <span style={{ fontSize: 11, fontFamily: "'JetBrains Mono',monospace" }}>Try the Interactive Map tab</span>
+    <div style={{ height: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0A1628', gap: 10 }}>
+      <span style={{ fontSize: 36 }}>🗺️</span>
+      <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>Street View not available for this location</span>
+      {lat && lng && (
+        <a href={`https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m1!1e3`} target="_blank" rel="noopener noreferrer"
+          style={{ padding: '7px 16px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', fontSize: 12, textDecoration: 'none' }}>
+          Open in Google Maps →
+        </a>
+      )}
     </div>
   )
+
   return (
     <div style={{ position: 'relative', minHeight: 240 }}>
-      {status === 'loading' && (
+      {/* Loading state */}
+      {status === 'loading' && !nearestUrl && (
         <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0A1628', gap: 10, position: 'absolute', inset: 0, zIndex: 1 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10"/></svg>
           <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: "'JetBrains Mono',monospace" }}>Loading street view...</span>
         </div>
       )}
-      <img src={url} alt="Street view"
-        style={{ width: '100%', height: 240, objectFit: 'cover', display: status === 'error' ? 'none' : 'block' }}
-        onLoad={() => setStatus('ok')} onError={() => setStatus('error')} />
-      {status === 'error' && (
+
+      {/* Primary image */}
+      {!nearestUrl && (
+        <img src={url} alt="Street view"
+          style={{ width: '100%', height: 240, objectFit: 'cover', display: status === 'error' ? 'none' : 'block' }}
+          onLoad={() => setStatus('ok')}
+          onError={() => { setStatus('error'); tryNearest() }} />
+      )}
+
+      {/* Nearest fallback image */}
+      {nearestUrl && (
+        <div style={{ position: 'relative' }}>
+          <img src={nearestUrl} alt="Nearest street view" style={{ width: '100%', height: 240, objectFit: 'cover', display: 'block' }} />
+          <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.75)', borderRadius: 6, padding: '5px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", maxWidth: 240 }}>
+            📷 Nearest road view · {nearestDist}m from this location
+          </div>
+        </div>
+      )}
+
+      {/* No coverage anywhere */}
+      {status === 'error' && !nearestUrl && (
         <div style={{ height: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0A1628', color: 'rgba(255,255,255,0.5)', gap: 10 }}>
-          <span style={{ fontSize: 36 }}>📷</span>
-          <span style={{ fontSize: 13, fontWeight: 500 }}>No Street View coverage here</span>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: "'JetBrains Mono',monospace" }}>Common in Lagos residential streets</span>
+          <span style={{ fontSize: 36 }}>🗺️</span>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Street View not available for exact location</div>
+            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: "'JetBrains Mono',monospace", marginBottom: 12 }}>No coverage within 500m · Common in Lagos residential areas</div>
+          </div>
           {lat && lng && (
             <a href={`https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m1!1e3`} target="_blank" rel="noopener noreferrer"
-              style={{ marginTop: 4, padding: '7px 16px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', fontSize: 12, textDecoration: 'none' }}>
+              style={{ padding: '8px 18px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', fontSize: 12, textDecoration: 'none' }}>
               Open in Google Maps →
             </a>
           )}
         </div>
       )}
-      {status === 'ok' && (
+
+      {/* Success badge */}
+      {status === 'ok' && !nearestUrl && (
         <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace" }}>
           📷 Street View · Ground level
         </div>

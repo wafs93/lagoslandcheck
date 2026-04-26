@@ -431,6 +431,62 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ── WHAT HAPPENS IF YOU DON'T VERIFY ── */}
+      <section style={{background:'#fff',padding:'5rem 1.5rem'}}>
+        <div style={{maxWidth:960,margin:'0 auto'}}>
+          <div style={{textAlign:'center',marginBottom:'3rem'}}>
+            <p style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:'#D64545',letterSpacing:'1.5px',marginBottom:8}}>REAL CONSEQUENCES</p>
+            <h2 style={{fontFamily:"'Lora',serif",fontSize:'clamp(26px,4vw,40px)',fontWeight:600,letterSpacing:'-.5px',marginBottom:'1rem',lineHeight:1.2}}>What happens when you skip verification?</h2>
+            <p style={{fontSize:15,color:'#6B7280',maxWidth:520,margin:'0 auto',lineHeight:1.7}}>These are not hypothetical. They happen every week in Lagos.</p>
+          </div>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(280px,1fr))',gap:16,marginBottom:'3rem'}}>
+            {[
+              {icon:'🏛',title:'You buy gazette-acquired land',desc:'The Lagos State Government acquired the land 3 years ago for road expansion. The seller knew. You didn\'t. The government demolishes your structure with no compensation.',cost:'Average loss: ₦8M–₦45M',color:'#D64545'},
+              {icon:'👥',title:'Omo Onile appear after purchase',desc:'Three months after you pay and start building, community members arrive demanding ₦500,000 "community levy." When you refuse, construction is halted by force.',cost:'Average loss: ₦2M–₦15M',color:'#D64545'},
+              {icon:'💧',title:'You build on a floodplain',desc:'The land looked dry in January. By June, your foundation is underwater. The plot sits in a seasonal floodplain that NIMET has mapped for years.',cost:'Average loss: ₦5M–₦20M',color:'#E6A23C'},
+              {icon:'📋',title:'Someone else already owns it',desc:'The seller showed you a genuine-looking C of O. He showed the same document to 4 other buyers. One of them gets the land. The other 3 get nothing.',cost:'Average loss: Full purchase price',color:'#D64545'},
+            ].map(s=>(
+              <div key={s.title} style={{background:'#FEF2F2',borderRadius:16,padding:'1.5rem',border:`1px solid rgba(214,69,69,0.15)`}}>
+                <div style={{fontSize:32,marginBottom:12}}>{s.icon}</div>
+                <h3 style={{fontSize:15,fontWeight:700,color:'#111827',marginBottom:8,lineHeight:1.35}}>{s.title}</h3>
+                <p style={{fontSize:13,color:'#6B7280',lineHeight:1.7,marginBottom:12}}>{s.desc}</p>
+                <div style={{fontSize:11,fontFamily:"'JetBrains Mono',monospace",color:'#D64545',fontWeight:600,background:'rgba(214,69,69,0.08)',padding:'6px 10px',borderRadius:6,display:'inline-block'}}>{s.cost}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{background:'linear-gradient(135deg,#0A5C45,#07382C)',borderRadius:20,padding:'2rem',textAlign:'center'}}>
+            <p style={{fontSize:13,color:'rgba(255,255,255,.6)',fontFamily:"'JetBrains Mono',monospace",letterSpacing:'1px',marginBottom:8}}>THE ALTERNATIVE</p>
+            <h3 style={{fontFamily:"'Lora',serif",fontSize:24,color:'#fff',fontWeight:600,marginBottom:8}}>LagosLandCheck catches all of these — in 2 minutes.</h3>
+            <p style={{fontSize:14,color:'rgba(255,255,255,.6)',marginBottom:'1.5rem'}}>₦2,500 for a full report. Compare that to what you stand to lose.</p>
+            <a href="/agent" style={{display:'inline-block',padding:'13px 32px',background:'linear-gradient(135deg,#CFAF6E,#B8942A)',borderRadius:10,fontSize:14,fontWeight:700,color:'#fff',textDecoration:'none'}}>
+              Check before you pay →
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* ── PRIVACY + TRUST ── */}
+      <section style={{background:'#F8FAF9',padding:'4rem 1.5rem'}}>
+        <div style={{maxWidth:960,margin:'0 auto'}}>
+          <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:14}}>
+            {[
+              {icon:'🔒',title:'We do not store your documents',desc:'No survey plans, no personal documents are stored permanently. Your query is processed and deleted.'},
+              {icon:'🛡️',title:'Data processed securely',desc:'All verification requests are encrypted in transit. We never share your property search data with third parties.'},
+              {icon:'⚖️',title:'Pre-screening, not legal advice',desc:'Our reports are intelligence tools. We always recommend engaging a licensed Lagos property lawyer for final due diligence.'},
+              {icon:'🌍',title:'Built for diaspora buyers',desc:'Used by Nigerians in UK, US, Canada, and Germany who cannot physically visit land before making purchase decisions.'},
+            ].map(t=>(
+              <div key={t.title} style={{background:'#fff',borderRadius:14,padding:'1.25rem',border:'1px solid #E5E7EB',display:'flex',gap:12,alignItems:'flex-start'}}>
+                <span style={{fontSize:24,flexShrink:0}}>{t.icon}</span>
+                <div>
+                  <div style={{fontSize:13,fontWeight:600,color:'#111827',marginBottom:4}}>{t.title}</div>
+                  <div style={{fontSize:12,color:'#6B7280',lineHeight:1.65}}>{t.desc}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── FINAL CTA ── */}
       <section style={{background:'#07382C',padding:'5rem 1.5rem',textAlign:'center'}}>
         <div style={{maxWidth:560,margin:'0 auto'}}>
