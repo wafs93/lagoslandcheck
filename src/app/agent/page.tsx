@@ -468,7 +468,7 @@ export default function AgentPage() {
                 {([
                   { id: 'satellite' as const, label: '🛰️ Satellite', show: !!satelliteUrl },
                   { id: 'street' as const, label: '📷 Street View', show: !!streetViewUrl },
-                ] as Array<{id:'satellite'|'street'|'map',label:string,show:boolean}>).filter(t => t.show).map(tab => (
+                ] as Array<{id:'satellite'|'street',label:string,show:boolean}>).filter(t => t.show).map(tab => (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                     style={{ padding: '10px 14px', background: activeTab === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', borderBottom: activeTab === tab.id ? '2px solid #CFAF6E' : '2px solid transparent', color: activeTab === tab.id ? '#fff' : 'rgba(255,255,255,0.4)', fontSize: 11, fontFamily: "'JetBrains Mono',monospace", cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     {tab.label}
