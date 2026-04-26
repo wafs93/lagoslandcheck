@@ -144,16 +144,21 @@ function generatePDF(checks: Check[], overall: string, lat: string, lng: string,
   // Open in new window and trigger print
   const win = window.open('', '_blank')
   if (!win) {
-    alert('Please allow popups to download the PDF report.')
+    alert('Please allow popups to download the PDF report. Check your browser popup settings.')
     return
   }
+  win.document.open()
   win.document.write(html)
   win.document.close()
-  win.onload = () => {
-    setTimeout(() => {
+  // Use setTimeout directly - onload doesn't fire after document.write
+  setTimeout(() => {
+    try {
+      win.focus()
       win.print()
-    }, 500)
-  }
+    } catch (e) {
+      console.error('Print failed:', e)
+    }
+  }, 1200)
 }
 
 function StreetViewImage({ url }: { url: string | null }) {

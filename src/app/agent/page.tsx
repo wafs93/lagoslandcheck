@@ -154,7 +154,7 @@ export default function AgentPage() {
   const [result, setResult] = useState<VerificationResult | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [imgZoom, setImgZoom] = useState(false)
-  const [activeTab, setActiveTab] = useState<'satellite' | 'street' | 'map'>('satellite')
+  const [activeTab, setActiveTab] = useState<'satellite' | 'street'>('satellite')
   const [chatOpen, setChatOpen] = useState(false)
   const [chatInput, setChatInput] = useState('')
   const [chatMessages, setChatMessages] = useState<{role:'user'|'agent';text:string}[]>([])
@@ -273,7 +273,6 @@ export default function AgentPage() {
 
   const satelliteUrl = result?.lat && result?.lng ? `https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lng}&zoom=19&size=640x360&maptype=satellite&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}` : null
   const streetViewUrl = result?.lat && result?.lng ? `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${result.lat},${result.lng}&fov=90&pitch=0&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}` : null
-  const mapsEmbedUrl = result?.lat && result?.lng ? `https://www.google.com/maps/embed/v1/view?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&center=${result.lat},${result.lng}&zoom=19&maptype=satellite` : null
   const rc = result ? RISK_CONFIG[result.overall] : null
   const hasBuilding = result?.checks.find(c => c.id === 'satellite')?.summary?.toLowerCase().includes('building')
 
@@ -463,13 +462,12 @@ export default function AgentPage() {
           </div>
 
           {/* Map Viewer */}
-          {(satelliteUrl || streetViewUrl || mapsEmbedUrl) && (
+          {(satelliteUrl || streetViewUrl) && (
             <div className="appear card" style={{ marginBottom: '1rem', overflow: 'hidden' }}>
               <div style={{ display: 'flex', background: '#0A1628', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                 {([
                   { id: 'satellite' as const, label: '🛰️ Satellite', show: !!satelliteUrl },
                   { id: 'street' as const, label: '📷 Street View', show: !!streetViewUrl },
-                  { id: 'map' as const, label: '🗺️ Interactive', show: !!mapsEmbedUrl },
                 ] as Array<{id:'satellite'|'street'|'map',label:string,show:boolean}>).filter(t => t.show).map(tab => (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                     style={{ padding: '10px 14px', background: activeTab === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', borderBottom: activeTab === tab.id ? '2px solid #CFAF6E' : '2px solid transparent', color: activeTab === tab.id ? '#fff' : 'rgba(255,255,255,0.4)', fontSize: 11, fontFamily: "'JetBrains Mono',monospace", cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -510,10 +508,7 @@ export default function AgentPage() {
                   <StreetViewTab key="street-view" url={streetViewUrl} lat={result.lat} lng={result.lng} />
                 )}
 
-                {/* Interactive map — only mounted after user clicks it */}
-                {activeTab === 'map' && mapsEmbedUrl && (
-                  <iframe key="map-embed" src={mapsEmbedUrl} width="100%" height="240" style={{ border: 'none', display: 'block' }} allowFullScreen loading="lazy" />
-                )}
+
               </div>
             </div>
           )}
@@ -612,10 +607,10 @@ export default function AgentPage() {
             <div className="appear card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
               <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: '#0A5C45', letterSpacing: '1.5px', marginBottom: 10 }}>EXPORT YOUR REPORT</p>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button onClick={() => router.push(`/report?lat=${result.lat}&lng=${result.lng}`)}
-                  style={{ flex: 1, padding: '12px 0', background: '#0A5C45', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                <a href={`/report?lat=${result.lat}&lng=${result.lng}&paid=1`} target="_blank" rel="noopener noreferrer"
+                  style={{ flex: 1, padding: '12px 0', background: '#0A5C45', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                   📄 Download PDF
-                </button>
+                </a>
                 <a href={`https://wa.me/?text=${encodeURIComponent(`LagosLandCheck Report\n\nLocation: ${result.location_label}\nRisk: ${result.overall}\n\nVerify at lagoslandcheck.com`)}`}
                   target="_blank" rel="noopener noreferrer"
                   style={{ flex: 1, padding: '12px 0', background: '#25D366', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
