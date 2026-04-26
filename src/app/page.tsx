@@ -52,8 +52,8 @@ export default function Home() {
           <span style={{fontSize:9,fontFamily:"'JetBrains Mono',monospace",background:'rgba(207,175,110,.2)',color:'#CFAF6E',border:'0.5px solid rgba(207,175,110,.4)',padding:'2px 7px',borderRadius:4}}>BETA</span>
         </div>
         <div className="nav-links" style={{display:'flex',gap:'2rem',alignItems:'center'}}>
-          {['How it works','Fraud alerts','Buyer guide'].map(l=>(
-            <a key={l} href={`#${l.toLowerCase().replace(/ /g,'-')}`} style={{fontSize:13,color:'rgba(255,255,255,.6)',textDecoration:'none',transition:'color .15s'}}
+          {[['How it works','#how-it-works'],['Fraud alerts','#fraud-alerts'],['Buyer guide','#buyer-guide']].map(([l,h])=>(
+            <a key={l} href={h} style={{fontSize:13,color:'rgba(255,255,255,.6)',textDecoration:'none',transition:'color .15s'}}
               onMouseEnter={e=>(e.currentTarget.style.color='#fff')} onMouseLeave={e=>(e.currentTarget.style.color='rgba(255,255,255,.6)')}>{l}</a>
           ))}
         </div>
@@ -198,7 +198,7 @@ export default function Home() {
       </section>
 
       {/* ── 6 RISK CHECKS ── */}
-      <section style={{background:'#F8FAF9',padding:'5rem 1.5rem'}}>
+      <section id="fraud-alerts" style={{background:'#F8FAF9',padding:'5rem 1.5rem'}}>
         <div style={{maxWidth:960,margin:'0 auto'}}>
           <div style={{marginBottom:'2.5rem'}}>
             <p style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:'#D64545',letterSpacing:'1.5px',marginBottom:8}}>6 RISKS WE DETECT</p>
@@ -432,7 +432,7 @@ export default function Home() {
       </section>
 
       {/* ── WHAT HAPPENS IF YOU DON'T VERIFY ── */}
-      <section style={{background:'#fff',padding:'5rem 1.5rem'}}>
+      <section id="buyer-guide" style={{background:'#fff',padding:'5rem 1.5rem'}}>
         <div style={{maxWidth:960,margin:'0 auto'}}>
           <div style={{textAlign:'center',marginBottom:'3rem'}}>
             <p style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",color:'#D64545',letterSpacing:'1.5px',marginBottom:8}}>REAL CONSEQUENCES</p>
