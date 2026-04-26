@@ -425,24 +425,39 @@ export default function AgentPage() {
                 </div>
               </div>
 
-              {activeTab === 'satellite' && satelliteUrl && (
-                <div style={{ position: 'relative', cursor: 'zoom-in' }} onClick={() => setImgZoom(true)}>
-                  <img src={satelliteUrl} alt="Satellite" style={{ width: '100%', height: 240, objectFit: 'cover', display: 'block' }}
-                    onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                  <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace" }}>
-                    Tap to zoom · AI analysed
-                  </div>
-                  {hasBuilding && (
-                    <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.92)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", fontWeight: 700 }}>
-                      ⚠️ BUILDING DETECTED
+              <div style={{ position: 'relative' }}>
+                {/* Satellite tab — always rendered, hidden when not active */}
+                <div style={{ display: activeTab === 'satellite' ? 'block' : 'none' }}>
+                  {satelliteUrl ? (
+                    <div style={{ position: 'relative', cursor: 'zoom-in' }} onClick={() => setImgZoom(true)}>
+                      <img src={satelliteUrl} alt="Satellite" style={{ width: '100%', height: 240, objectFit: 'cover', display: 'block' }}
+                        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                      <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace" }}>
+                        🛰️ Tap to zoom · AI analysed
+                      </div>
+                      {hasBuilding && (
+                        <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.92)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", fontWeight: 700 }}>
+                          ⚠️ BUILDING DETECTED
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ height: 240, background: '#0A1628', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 13, fontFamily: "'JetBrains Mono',monospace" }}>
+                      Satellite image unavailable
                     </div>
                   )}
                 </div>
-              )}
-              {activeTab === 'street' && <StreetViewTab url={streetViewUrl} lat={result.lat} lng={result.lng} />}
-              {activeTab === 'map' && mapsEmbedUrl && (
-                <iframe src={mapsEmbedUrl} width="100%" height="240" style={{ border: 'none', display: 'block' }} allowFullScreen loading="lazy" />
-              )}
+
+                {/* Street View tab — only mounted after user clicks it */}
+                {activeTab === 'street' && (
+                  <StreetViewTab key="street-view" url={streetViewUrl} lat={result.lat} lng={result.lng} />
+                )}
+
+                {/* Interactive map — only mounted after user clicks it */}
+                {activeTab === 'map' && mapsEmbedUrl && (
+                  <iframe key="map-embed" src={mapsEmbedUrl} width="100%" height="240" style={{ border: 'none', display: 'block' }} allowFullScreen loading="lazy" />
+                )}
+              </div>
             </div>
           )}
 
