@@ -140,13 +140,14 @@ export default function AgentPage() {
           } catch { /* skip */ }
         }
       }
-      if (verificationData) { setResult(verificationData); setStage('results') }
+      if (verificationData) { setResult(verificationData); setActiveTab('satellite'); setStage('results') }
       else throw new Error('No result')
     } catch {
       setResult({
         overall: 'CAUTION', location_label: userInput.slice(0, 60), confidence: 'medium',
         checks: CHECKS_CONFIG.map(c => ({ id: c.id, icon: c.icon, name: c.name, status: 'caution' as const, summary: 'Check completed. Review recommended.', details: 'Full details available in the paid report.' }))
       })
+      setActiveTab('satellite')
       setStage('results')
     }
   }
@@ -157,14 +158,30 @@ export default function AgentPage() {
     const script = document.createElement('script')
     script.src = 'https://js.paystack.co/v1/inline.js'
     script.onload = () => {
-      const handler = (window as any).PaystackPop.setup({
-        key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder',
-        email, amount: 250000, currency: 'NGN',
-        ref: `llc_agent_${Date.now()}`,
-        callback: () => { setPaid(true); setPayLoading(false) },
-        onClose: () => setPayLoading(false)
-      })
-      handler.openIframe()
+      try {
+        const handler = (window as any).PaystackPop.setup({
+          key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder',
+          email, amount: 250000, currency: 'NGN',
+          ref: `llc_agent_${Date.now()}`,
+          callback: (response: { reference: string }) => {
+            console.log('Payment success:', response.reference)
+            setPaid(true)
+            setPayLoading(false)
+          },
+          onClose: () => {
+            console.log('Payment closed')
+            setPayLoading(false)
+          }
+        })
+        handler.openIframe()
+      } catch (err) {
+        console.error('Paystack error:', err)
+        setPayLoading(false)
+      }
+    }
+    script.onerror = () => {
+      console.error('Failed to load Paystack')
+      setPayLoading(false)
     }
     document.head.appendChild(script)
   }
@@ -392,11 +409,11 @@ export default function AgentPage() {
           {(satelliteUrl || streetViewUrl || mapsEmbedUrl) && (
             <div className="appear card" style={{ marginBottom: '1rem', overflow: 'hidden' }}>
               <div style={{ display: 'flex', background: '#0A1628', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                {[
+                {([
                   { id: 'satellite' as const, label: '🛰️ Satellite', show: !!satelliteUrl },
                   { id: 'street' as const, label: '📷 Street View', show: !!streetViewUrl },
                   { id: 'map' as const, label: '🗺️ Interactive', show: !!mapsEmbedUrl },
-                ].filter(t => t.show).map(tab => (
+                ] as Array<{id:'satellite'|'street'|'map',label:string,show:boolean}>).filter(t => t.show).map(tab => (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
                     style={{ padding: '10px 14px', background: activeTab === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', borderBottom: activeTab === tab.id ? '2px solid #CFAF6E' : '2px solid transparent', color: activeTab === tab.id ? '#fff' : 'rgba(255,255,255,0.4)', fontSize: 11, fontFamily: "'JetBrains Mono',monospace", cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     {tab.label}
@@ -502,11 +519,15 @@ export default function AgentPage() {
               </div>
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && initPaystack()}
-                placeholder="Your email for receipt"
-                style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: '1.5px solid rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 14, fontFamily: "'Syne',sans-serif", marginBottom: 10 }} />
-              <button onClick={initPaystack} disabled={payLoading || !email.trim()}
-                style={{ width: '100%', padding: '14px 0', background: email.trim() ? 'linear-gradient(135deg,#CFAF6E,#B8942A)' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 11, fontSize: 15, fontWeight: 700, color: '#fff', cursor: email.trim() ? 'pointer' : 'not-allowed', fontFamily: "'Syne',sans-serif" }}>
-                {payLoading ? 'Processing...' : '🔓 Unlock Full Report — ₦2,500'}
+                placeholder="your@email.com"
+                style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: `1.5px solid ${email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? 'rgba(239,68,68,0.6)' : 'rgba(255,255,255,0.25)'}`, background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 14, fontFamily: "'Syne',sans-serif", marginBottom: 4 }} />
+              {email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && (
+                <p style={{ fontSize: 11, color: 'rgba(239,68,68,0.8)', marginBottom: 10, fontFamily: "'JetBrains Mono',monospace" }}>Please enter a valid email address</p>
+              )}
+              {(!email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) && <div style={{ marginBottom: 10 }} />}
+              <button onClick={initPaystack} disabled={payLoading || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)}
+                style={{ width: '100%', padding: '14px 0', background: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? 'linear-gradient(135deg,#CFAF6E,#B8942A)' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 11, fontSize: 15, fontWeight: 700, color: '#fff', cursor: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? 'pointer' : 'not-allowed', fontFamily: "'Syne',sans-serif" }}>
+                {payLoading ? '⏳ Opening payment...' : '🔓 Unlock Full Report — ₦2,500'}
               </button>
               <p style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 8, fontFamily: "'JetBrains Mono',monospace" }}>
                 Secure via Paystack · Card, bank transfer, USSD
