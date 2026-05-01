@@ -32,133 +32,312 @@ declare global { interface Window { PaystackPop: any } }
 function generatePDF(checks: Check[], overall: string, lat: string, lng: string, satelliteUrl: string | null, streetViewUrl: string | null) {
   const vc = verdictConfig[overall as keyof typeof verdictConfig] || verdictConfig.CAUTION
   const date = new Date().toLocaleDateString('en-NG', { day: 'numeric', month: 'long', year: 'numeric' })
+  const time = new Date().toLocaleTimeString('en-NG', { hour: '2-digit', minute: '2-digit' })
   const refNo = `LLC-${Date.now().toString(36).toUpperCase()}`
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=80x80&data=https://lagoslandcheck.com/verify/${refNo}`
 
-  const statusBadge = (status: string) => {
-    const colors: Record<string, string> = {
-      clear: '#065F46', caution: '#92400E', critical: '#991B1B', queued: '#6B7280', running: '#1D4ED8'
-    }
-    const bgs: Record<string, string> = {
-      clear: '#D1FAE5', caution: '#FEF3C7', critical: '#FEE2E2', queued: '#F3F4F6', running: '#DBEAFE'
-    }
-    return `<span style="font-size:9px;font-family:monospace;padding:2px 8px;border-radius:4px;background:${bgs[status]||'#F3F4F6'};color:${colors[status]||'#6B7280'};font-weight:700">${status.toUpperCase()}</span>`
+  const verdictColors = {
+    CLEAR:    { bg: '#ECFDF5', border: '#6EE7B7', text: '#065F46', dot: '#22C55E', label: 'ALL CLEAR',            icon: '✅' },
+    CAUTION:  { bg: '#FFFBEB', border: '#FCD34D', text: '#92400E', dot: '#F59E0B', label: 'PROCEED WITH CAUTION', icon: '⚠️' },
+    CRITICAL: { bg: '#FEF2F2', border: '#FCA5A5', text: '#991B1B', dot: '#EF4444', label: 'DO NOT PROCEED',       icon: '🚫' },
+  }
+  const vd = verdictColors[overall as keyof typeof verdictColors] || verdictColors.CAUTION
+
+  const dotColor = (s: string) => ({ clear: '#22C55E', caution: '#F59E0B', critical: '#EF4444' }[s] || '#D1D5DB')
+  const badgeBg  = (s: string) => ({ clear: '#D1FAE5', caution: '#FEF3C7', critical: '#FEE2E2' }[s] || '#F3F4F6')
+  const badgeTxt = (s: string) => ({ clear: '#065F46', caution: '#92400E', critical: '#991B1B' }[s] || '#6B7280')
+  const badgeLbl = (s: string) => ({ clear: 'CLEAR',  caution: 'CAUTION',  critical: 'HIGH RISK' }[s] || s.toUpperCase())
+
+  const checkIcons: Record<string, string> = {
+    satellite: '🛰️', gazette: '📜', flood: '🌊', litigation: '⚖️', luc: '🧾', fraud: '🚨'
   }
 
   const html = `<!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="utf-8">
-<title>LagosLandCheck Verification Report — ${refNo}</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>LagosLandCheck — Verification Certificate ${refNo}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&display=swap');
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: 'Syne', Arial, sans-serif; color: #111827; background: #fff; padding: 32px; max-width: 700px; margin: 0 auto; }
-  .header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #0A5C45; }
-  .logo { display: flex; align-items: center; gap: 10px; }
-  .logo-box { width: 36px; height: 36px; background: #0A5C45; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
-  .logo-name { font-size: 18px; font-weight: 700; color: #0A5C45; }
-  .ref { font-size: 10px; font-family: monospace; color: #6B7280; text-align: right; }
-  .verdict { border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid ${vc.border}; background: ${vc.bg}; }
-  .verdict-label { font-size: 18px; font-weight: 700; color: ${vc.text}; margin-bottom: 4px; }
-  .verdict-sub { font-size: 12px; color: ${vc.text}; opacity: 0.85; }
-  .meta { display: flex; gap: 12px; margin-top: 10px; }
-  .meta-tag { font-size: 10px; font-family: monospace; background: rgba(0,0,0,0.07); color: ${vc.text}; padding: 3px 8px; border-radius: 4px; }
-  .satellite { width: 100%; border-radius: 10px; margin-bottom: 20px; border: 1px solid #E5E7EB; }
-  .section-title { font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 10px; text-transform: uppercase; letter-spacing: 1px; font-family: monospace; }
-  .check { padding: 12px 0; border-bottom: 0.5px solid #F3F4F6; }
-  .check:last-child { border-bottom: none; }
-  .check-header { display: flex; align-items: center; gap: 10px; margin-bottom: 5px; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-  .check-name { font-size: 13px; font-weight: 600; flex: 1; color: #111827; }
-  .check-summary { font-size: 12px; color: #6B7280; line-height: 1.55; padding-left: 18px; margin-bottom: 4px; }
-  .check-details { font-size: 11px; color: #374151; line-height: 1.7; padding-left: 18px; background: #F9FAFB; padding: 8px 12px 8px 30px; border-radius: 6px; margin-top: 4px; }
-  .disclaimer { font-size: 10px; color: #9CA3AF; line-height: 1.7; margin-top: 24px; padding-top: 16px; border-top: 1px solid #F3F4F6; font-family: monospace; }
-  .footer { display: flex; justify-content: space-between; align-items: center; margin-top: 20px; padding-top: 12px; border-top: 1px solid #E5E7EB; }
-  .footer-brand { font-size: 11px; color: #0A5C45; font-weight: 600; }
-  .footer-ref { font-size: 10px; color: #9CA3AF; font-family: monospace; }
+  @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Inter',Arial,sans-serif;color:#111827;background:#fff;font-size:13px;line-height:1.5}
+  
+  /* ── COVER PAGE ── */
+  .cover{min-height:100vh;display:flex;flex-direction:column;background:#07382C;padding:0;page-break-after:always}
+  .cover-top{padding:36px 40px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,0.1)}
+  .cover-logo{display:flex;align-items:center;gap:12px}
+  .cover-logo-box{width:40px;height:40px;background:#0A5C45;border-radius:10px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,0.15)}
+  .cover-logo-name{font-family:'Syne',sans-serif;font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.5px}
+  .cover-logo-sub{font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,0.4);letter-spacing:1.5px}
+  .cover-ref{font-family:'JetBrains Mono',monospace;font-size:10px;color:rgba(255,255,255,0.4);text-align:right}
+  .cover-ref strong{color:rgba(255,255,255,0.8);display:block;font-size:12px;margin-bottom:2px}
+  .cover-hero{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 40px;text-align:center}
+  .cover-eyebrow{font-family:'JetBrains Mono',monospace;font-size:10px;letter-spacing:2px;color:rgba(255,255,255,0.4);margin-bottom:20px;text-transform:uppercase}
+  .cover-title{font-family:'Syne',sans-serif;font-size:40px;font-weight:800;color:#fff;line-height:1.1;letter-spacing:-1px;margin-bottom:12px}
+  .cover-title span{color:#CFAF6E}
+  .cover-subtitle{font-size:14px;color:rgba(255,255,255,0.55);max-width:400px;line-height:1.7;margin-bottom:40px}
+  .cover-verdict{border-radius:16px;padding:20px 32px;margin-bottom:32px;border:1px solid ${vd.border};background:${vd.bg};display:inline-block}
+  .cover-verdict-icon{font-size:32px;margin-bottom:8px}
+  .cover-verdict-label{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:${vd.text};letter-spacing:-0.5px}
+  .cover-verdict-sub{font-size:12px;color:${vd.text};opacity:0.8;margin-top:4px}
+  .cover-meta{display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+  .cover-meta-pill{font-family:'JetBrains Mono',monospace;font-size:10px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);color:rgba(255,255,255,0.6);padding:6px 14px;border-radius:20px}
+  .cover-bottom{padding:24px 40px;border-top:1px solid rgba(255,255,255,0.08);display:flex;align-items:center;justify-content:space-between}
+  .cover-bottom-text{font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,0.25);line-height:1.8}
+  .cover-qr{width:60px;height:60px;background:#fff;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden}
+
+  /* ── REPORT PAGES ── */
+  .page{padding:40px;max-width:760px;margin:0 auto}
+  .page-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:16px;border-bottom:2px solid #0A5C45;margin-bottom:28px}
+  .page-header-logo{display:flex;align-items:center;gap:8px}
+  .page-header-logo-box{width:28px;height:28px;background:#0A5C45;border-radius:6px;display:flex;align-items:center;justify-content:center}
+  .page-header-name{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:#0A5C45}
+  .page-header-ref{font-family:'JetBrains Mono',monospace;font-size:9px;color:#9CA3AF;text-align:right}
+  
+  .section-label{font-family:'JetBrains Mono',monospace;font-size:9px;color:#9CA3AF;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:8px}
+  .section-title{font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:#111827;margin-bottom:16px;letter-spacing:-0.3px}
+
+  /* Verdict card */
+  .verdict-card{border-radius:12px;padding:20px 24px;margin-bottom:24px;border:1px solid ${vd.border};background:${vd.bg}}
+  .verdict-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .verdict-main{font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:${vd.text}}
+  .verdict-desc{font-size:12px;color:${vd.text};opacity:0.8;line-height:1.6;margin-bottom:12px}
+  .verdict-tags{display:flex;gap:8px;flex-wrap:wrap}
+  .verdict-tag{font-family:'JetBrains Mono',monospace;font-size:9px;background:rgba(0,0,0,0.06);color:${vd.text};padding:3px 10px;border-radius:4px}
+
+  /* Satellite image */
+  .sat-img{width:100%;border-radius:10px;margin-bottom:8px;border:1px solid #E5E7EB;display:block}
+  .sat-cap{font-family:'JetBrains Mono',monospace;font-size:9px;color:#9CA3AF;text-align:center;margin-bottom:24px}
+
+  /* Check cards */
+  .checks-grid{margin-bottom:24px}
+  .check-card{border:1px solid #E5E7EB;border-radius:10px;padding:14px 16px;margin-bottom:8px;page-break-inside:avoid}
+  .check-card-header{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .check-icon-box{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:15px;flex-shrink:0}
+  .check-name{font-family:'Syne',sans-serif;font-size:13px;font-weight:600;color:#111827;flex:1}
+  .check-badge{font-family:'JetBrains Mono',monospace;font-size:8px;padding:3px 9px;border-radius:4px;font-weight:700;letter-spacing:0.5px}
+  .check-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+  .check-summary{font-size:12px;color:#6B7280;line-height:1.6;margin-bottom:6px;padding-left:42px}
+  .check-details{font-size:11px;color:#374151;line-height:1.7;padding:10px 12px;background:#F9FAFB;border-radius:6px;margin-left:42px;border-left:3px solid #E5E7EB}
+
+  /* Risk bar */
+  .risk-bar{display:flex;gap:4px;margin:12px 0 4px}
+  .risk-seg{flex:1;height:5px;border-radius:3px}
+  .risk-labels{display:flex;justify-content:space-between}
+  .risk-label{font-family:'JetBrains Mono',monospace;font-size:8px;color:#9CA3AF}
+
+  /* Summary box */
+  .summary-box{background:#F8FAF9;border:1px solid #E5E7EB;border-radius:10px;padding:16px 18px;margin-bottom:24px}
+  .summary-text{font-size:12px;color:#374151;line-height:1.8}
+  .summary-text strong{color:#111827}
+
+  /* Disclaimer */
+  .disclaimer{background:#FFF8F0;border:1px solid #FED7AA;border-radius:10px;padding:14px 16px;margin-bottom:24px}
+  .disclaimer-title{font-family:'JetBrains Mono',monospace;font-size:9px;color:#92400E;letter-spacing:1px;margin-bottom:6px;font-weight:600}
+  .disclaimer-text{font-size:10px;color:#92400E;line-height:1.75}
+
+  /* Next steps */
+  .next-steps{margin-bottom:24px}
+  .step{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-bottom:0.5px solid #F3F4F6}
+  .step:last-child{border-bottom:none}
+  .step-num{width:22px;height:22px;border-radius:50%;background:#0A5C45;color:#fff;font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+  .step-text{font-size:12px;color:#374151;line-height:1.6}
+  .step-text strong{color:#111827;display:block;margin-bottom:2px}
+
+  /* Footer */
+  .report-footer{border-top:1px solid #E5E7EB;padding-top:16px;display:flex;align-items:center;justify-content:space-between;margin-top:8px}
+  .footer-brand{font-family:'Syne',sans-serif;font-size:11px;font-weight:700;color:#0A5C45}
+  .footer-meta{font-family:'JetBrains Mono',monospace;font-size:9px;color:#9CA3AF;text-align:right}
+
   @media print {
-    body { padding: 16px; }
-    @page { margin: 10mm; }
+    .cover{min-height:100vh}
+    .page{padding:24px}
+    @page{margin:8mm;size:A4}
+    .check-card{page-break-inside:avoid}
   }
 </style>
 </head>
 <body>
-  <div class="header">
-    <div class="logo">
-      <div class="logo-box">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+
+<!-- ═══════════════════════════════════════════
+     COVER PAGE
+════════════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-top">
+    <div class="cover-logo">
+      <div class="cover-logo-box">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
       </div>
       <div>
-        <div class="logo-name">LagosLandCheck</div>
-        <div style="font-size:10px;color:#6B7280;font-family:monospace">Land Verification Intelligence</div>
+        <div class="cover-logo-name">LagosLandCheck</div>
+        <div class="cover-logo-sub">LAND VERIFICATION INTELLIGENCE</div>
       </div>
     </div>
-    <div class="ref">
-      <div style="font-weight:700;color:#111;font-size:11px">VERIFICATION CERTIFICATE</div>
-      <div>Ref: ${refNo}</div>
-      <div>Date: ${date}</div>
+    <div class="cover-ref">
+      <strong>VERIFICATION CERTIFICATE</strong>
+      <span>Ref: ${refNo}</span><br>
+      <span>${date} · ${time}</span>
     </div>
   </div>
 
-  <div class="verdict">
-    <div class="verdict-label">${vc.label}</div>
-    <div class="verdict-sub">${vc.sub}</div>
-    <div class="meta">
-      <span class="meta-tag">${date}</span>
-      <span class="meta-tag">${parseFloat(lat).toFixed(5)}°N, ${parseFloat(lng).toFixed(5)}°E</span>
+  <div class="cover-hero">
+    <div class="cover-eyebrow">AI-Powered Land Pre-Screening Report</div>
+    <div class="cover-title">Lagos Land<br><span>Verification</span><br>Report</div>
+    <div class="cover-subtitle">6 automated checks completed using satellite imagery, public databases, and AI analysis</div>
+    
+    <div class="cover-verdict">
+      <div class="cover-verdict-icon">${vd.label === 'ALL CLEAR' ? '✅' : vd.label === 'PROCEED WITH CAUTION' ? '⚠️' : '🚫'}</div>
+      <div class="cover-verdict-label">${vd.label}</div>
+      <div class="cover-verdict-sub">${vc.sub}</div>
+    </div>
+
+    <div class="cover-meta">
+      <span class="cover-meta-pill">📍 ${parseFloat(lat).toFixed(5)}°N, ${parseFloat(lng).toFixed(5)}°E</span>
+      <span class="cover-meta-pill">📅 ${date}</span>
+      <span class="cover-meta-pill">⚡ 6 checks completed</span>
+      <span class="cover-meta-pill">🔒 Ref: ${refNo}</span>
     </div>
   </div>
 
-  ${satelliteUrl ? `<img src="${satelliteUrl}" class="satellite" alt="Satellite view" />` : ''}
-  <!-- Street view included if available -->
+  <div class="cover-bottom">
+    <div class="cover-bottom-text">
+      lagoslandcheck.com<br>
+      Pre-screening intelligence · Not legal advice<br>
+      Always engage a licensed Lagos property lawyer
+    </div>
+    <div class="cover-qr">
+      <img src="${qrUrl}" width="60" height="60" alt="QR" style="display:block" />
+    </div>
+  </div>
+</div>
 
-  <div class="section-title">6-Point Verification Results</div>
-  <div style="border:1px solid #E5E7EB;border-radius:12px;padding:4px 16px;margin-bottom:20px">
-    ${checks.map(c => {
-      const dotColors: Record<string, string> = { clear: '#22C55E', caution: '#F59E0B', critical: '#EF4444', queued: '#D1D5DB', running: '#60A5FA' }
-      return `<div class="check">
-        <div class="check-header">
-          <div class="dot" style="background:${dotColors[c.status]||'#D1D5DB'}"></div>
-          <span class="check-name">${c.name}</span>
-          ${statusBadge(c.status)}
-        </div>
-        <div class="check-summary">${c.summary}</div>
-        ${c.details ? `<div class="check-details">${c.details}</div>` : ''}
-      </div>`
-    }).join('')}
+<!-- ═══════════════════════════════════════════
+     PAGE 2 — VERDICT + SATELLITE + CHECKS
+════════════════════════════════════════════ -->
+<div class="page">
+  <div class="page-header">
+    <div class="page-header-logo">
+      <div class="page-header-logo-box">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      </div>
+      <span class="page-header-name">LagosLandCheck</span>
+    </div>
+    <div class="page-header-ref">
+      Ref: ${refNo} · ${date}<br>
+      lagoslandcheck.com
+    </div>
   </div>
 
+  <!-- Risk Verdict -->
+  <div class="section-label">OVERALL RISK ASSESSMENT</div>
+  <div class="verdict-card">
+    <div class="verdict-row">
+      <div class="verdict-main">${vd.label === 'ALL CLEAR' ? '✅' : vd.label === 'PROCEED WITH CAUTION' ? '⚠️' : '🚫'} ${vd.label}</div>
+    </div>
+    <div class="verdict-desc">${vc.sub}</div>
+    <div class="risk-bar">
+      <div class="risk-seg" style="background:${overall === 'CLEAR' ? '#22C55E' : '#E5E7EB'}"></div>
+      <div class="risk-seg" style="background:${overall === 'CAUTION' ? '#F59E0B' : '#E5E7EB'}"></div>
+      <div class="risk-seg" style="background:${overall === 'CRITICAL' ? '#EF4444' : '#E5E7EB'}"></div>
+    </div>
+    <div class="risk-labels">
+      <span class="risk-label">Low Risk</span>
+      <span class="risk-label">Medium Risk</span>
+      <span class="risk-label">High Risk</span>
+    </div>
+    <div class="verdict-tags" style="margin-top:12px">
+      <span class="verdict-tag">📅 ${date} · ${time}</span>
+      <span class="verdict-tag">📍 ${parseFloat(lat).toFixed(5)}°N, ${parseFloat(lng).toFixed(5)}°E</span>
+      <span class="verdict-tag">🔒 ${refNo}</span>
+    </div>
+  </div>
+
+  <!-- Satellite Image -->
+  ${satelliteUrl ? `
+  <div class="section-label">SATELLITE IMAGERY</div>
+  <img src="${satelliteUrl}" class="sat-img" alt="Satellite view of location" />
+  <div class="sat-cap">🛰️ AI-analysed satellite view · Zoom level 19 · ${parseFloat(lat).toFixed(5)}°N, ${parseFloat(lng).toFixed(5)}°E · Source: Google Maps</div>
+  ` : ''}
+
+  <!-- 6 Checks -->
+  <div class="section-label">6-POINT VERIFICATION RESULTS</div>
+  <div class="checks-grid">
+    ${checks.map(c => `
+    <div class="check-card">
+      <div class="check-card-header">
+        <div class="check-icon-box" style="background:${badgeBg(c.status)}">${checkIcons[c.id] || '🔍'}</div>
+        <span class="check-name">${c.name}</span>
+        <span class="check-badge" style="background:${badgeBg(c.status)};color:${badgeTxt(c.status)}">${badgeLbl(c.status)}</span>
+        <div class="check-dot" style="background:${dotColor(c.status)}"></div>
+      </div>
+      <div class="check-summary">${c.summary}</div>
+      ${c.details ? `<div class="check-details">${c.details}</div>` : ''}
+    </div>
+    `).join('')}
+  </div>
+
+  <!-- Summary -->
+  <div class="section-label">PLAIN ENGLISH SUMMARY</div>
+  <div class="summary-box">
+    <div class="summary-text">
+      ${overall === 'CLEAR'
+        ? `<strong>This land appears clear of major issues.</strong> Our 6 automated checks found no gazette acquisitions, active court disputes, known fraud zone flags, or flood risk concerns at this coordinate. The satellite imagery shows conditions consistent with the stated land type.<br><br>This pre-screening result is encouraging. However, this does not replace a full physical Land Registry search. Instruct a licensed Lagos property lawyer to conduct a formal title search before any payment.`
+        : overall === 'CAUTION'
+        ? `<strong>This land has raised concerns that require investigation before proceeding.</strong> One or more of our 6 checks returned a caution result. This may indicate proximity to a gazette acquisition corridor, a Land Use Charge gap, or an area with known community disputes.<br><br><strong>Do not pay any money before consulting a property lawyer.</strong> The findings in this report should be used as a starting point for deeper due diligence.`
+        : `<strong>This land has critical flags that strongly indicate risk of fraud or legal complications.</strong> Our checks have identified serious concerns that could result in loss of investment if this transaction proceeds.<br><br><strong>Do not proceed with this transaction without full legal investigation.</strong> Engage a licensed Lagos property lawyer immediately before taking any further steps.`
+      }
+    </div>
+  </div>
+
+  <!-- Next Steps -->
+  <div class="section-label">RECOMMENDED NEXT STEPS</div>
+  <div class="next-steps">
+    ${[
+      { n:1, title:'Engage a Lagos property lawyer', desc:'Show them this report and instruct a full Land Registry title search at the Lagos State Land Registry, Alausa.' },
+      { n:2, title:'Request the original C of O', desc:'Never accept photocopies alone. Verify the Certificate of Occupancy file number at the Land Registry (nominal fee).' },
+      { n:3, title:'Check Land Use Charge status', desc:'Visit landusecharge.lagosstate.gov.ng or instruct your lawyer to verify LUC payment history since 2018.' },
+      { n:4, title:'Engage a licensed surveyor', desc:'Instruct a SURCON-registered surveyor to verify beacon numbers on-site against OSGOF records.' },
+    ].map(s => `
+    <div class="step">
+      <div class="step-num">${s.n}</div>
+      <div class="step-text"><strong>${s.title}</strong>${s.desc}</div>
+    </div>`).join('')}
+  </div>
+
+  <!-- Disclaimer -->
   <div class="disclaimer">
-    <strong>IMPORTANT DISCLAIMER:</strong> This report is a pre-screening intelligence tool generated by LagosLandCheck. It does not constitute legal advice and does not replace a physical Land Registry search by a licensed property lawyer. The information in this report is based on available databases and satellite imagery at the time of generation. LagosLandCheck accepts no liability for decisions made solely on the basis of this report. Always engage a qualified Nigerian property lawyer before completing any land transaction.
-    <br><br>
-    <strong>Recommended next step:</strong> Present this report to a licensed property solicitor and instruct them to conduct a full Land Registry search at the Lagos State Land Registry, Alausa.
+    <div class="disclaimer-title">⚠️ IMPORTANT LEGAL DISCLAIMER</div>
+    <div class="disclaimer-text">
+      This report is a pre-screening intelligence tool generated by LagosLandCheck. It does not constitute legal advice and does not replace a physical Land Registry search by a licensed Nigerian property lawyer. All findings are based on publicly available databases and satellite imagery at the time of generation. LagosLandCheck accepts no liability for decisions made solely on the basis of this report. Always engage a qualified Nigerian property solicitor before completing any land transaction.
+    </div>
   </div>
 
-  <div class="footer">
-    <div class="footer-brand">LagosLandCheck · lagoslandcheck.vercel.app</div>
-    <div class="footer-ref">Ref: ${refNo} · ${date}</div>
+  <div class="report-footer">
+    <div class="footer-brand">LagosLandCheck · lagoslandcheck.com</div>
+    <div class="footer-meta">
+      ${refNo} · ${date}<br>
+      Pre-screening only · Not legal advice
+    </div>
   </div>
+</div>
+
 </body>
 </html>`
 
-  // Open in new window and trigger print
   const win = window.open('', '_blank')
   if (!win) {
-    alert('Please allow popups to download the PDF report. Check your browser popup settings.')
+    alert('Please allow popups to download the PDF. Check your browser popup blocker settings.')
     return
   }
   win.document.open()
   win.document.write(html)
   win.document.close()
-  // Use setTimeout directly - onload doesn't fire after document.write
   setTimeout(() => {
-    try {
-      win.focus()
-      win.print()
-    } catch (e) {
-      console.error('Print failed:', e)
-    }
-  }, 1200)
+    try { win.focus(); win.print() }
+    catch (e) { console.error('Print failed:', e) }
+  }, 1500)
 }
 
 function StreetViewImage({ url }: { url: string | null }) {
