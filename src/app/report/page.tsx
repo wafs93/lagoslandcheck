@@ -468,7 +468,7 @@ function ReportContent() {
     script.src = 'https://js.paystack.co/v1/inline.js'
     script.onload = () => {
       const handler = window.PaystackPop.setup({
-        key: 'pk_live_24d75de9079f18d337d6f0d8910e39ee4cd3415',
+        key: 'pk_live_24d75de9079f18d337d6f0d8910e39ee4cd3415a',
         email,
         amount: 250000, // ₦2,500 in kobo
         currency: 'NGN',
