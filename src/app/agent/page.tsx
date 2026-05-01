@@ -217,7 +217,7 @@ export default function AgentPage() {
     script.onload = () => {
       try {
         const handler = (window as any).PaystackPop.setup({
-          key: process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || 'pk_test_placeholder',
+          key: 'pk_live_24d75de9079f18d337d6f0d8910e39ee4cd3415',
           email, amount: 250000, currency: 'NGN',
           ref: `llc_agent_${Date.now()}`,
           callback: (response: { reference: string }) => {
