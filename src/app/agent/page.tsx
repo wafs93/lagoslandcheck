@@ -276,7 +276,7 @@ export default function AgentPage() {
     setChatLoading(false)
   }
 
-  const satelliteUrl = result?.lat && result?.lng ? `https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lng}&zoom=19&size=640x360&maptype=satellite&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}` : null
+  const satelliteUrl = result?.lat && result?.lng ? `https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lng}&zoom=20&size=640x640&maptype=hybrid&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}` : null
   const streetViewUrl = result?.lat && result?.lng ? `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${result.lat},${result.lng}&fov=90&pitch=0&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}` : null
   const rc = result ? RISK_CONFIG[result.overall] : null
   const hasBuilding = result?.checks.find(c => c.id === 'satellite')?.summary?.toLowerCase().includes('building')
@@ -522,7 +522,7 @@ export default function AgentPage() {
           {imgZoom && result.lat && result.lng && (
             <div onClick={() => setImgZoom(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', cursor: 'zoom-out' }}>
               <div style={{ maxWidth: 700, width: '100%' }}>
-                <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lng}&zoom=20&size=640x640&maptype=satellite&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`}
+                <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lng}&zoom=20&size=640x640&maptype=hybrid&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`}
                   alt="HD Satellite" style={{ width: '100%', borderRadius: 12 }} />
                 <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 10, fontFamily: "'JetBrains Mono',monospace" }}>Tap anywhere to close</p>
               </div>

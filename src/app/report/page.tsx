@@ -496,7 +496,7 @@ function ReportContent() {
   const vc = verdictConfig[overall]
 
   const satelliteUrl = lat && lng
-    ? `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=19&size=640x360&maptype=satellite&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
+    ? `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=19&size=640x360&maptype=hybrid&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
     : null
 
   const streetViewUrl = lat && lng
@@ -504,7 +504,7 @@ function ReportContent() {
     : null
 
   const mapsEmbedUrl = lat && lng
-    ? `https://www.google.com/maps/embed/v1/view?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&center=${lat},${lng}&zoom=19&maptype=satellite`
+    ? `https://www.google.com/maps/embed/v1/view?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&center=${lat},${lng}&zoom=19&maptype=hybrid`
     : null
 
   const satelliteCheck = checks.find(c => c.id === 'satellite')
@@ -639,7 +639,7 @@ function ReportContent() {
             {imgZoom && satelliteUrl && (
               <div onClick={() => setImgZoom(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', cursor: 'zoom-out' }}>
                 <div style={{ position: 'relative', maxWidth: 700, width: '100%' }}>
-                  <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=20&size=640x640&maptype=satellite&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`} alt="HD Satellite" style={{ width: '100%', borderRadius: 12, display: 'block' }} />
+                  <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=20&size=640x640&maptype=hybrid&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`} alt="HD Satellite" style={{ width: '100%', borderRadius: 12, display: 'block' }} />
                   <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.7)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace" }}>
                     🛰️ HD View · zoom 20 · {lat ? parseFloat(lat).toFixed(5) : ''}°N, {lng ? parseFloat(lng).toFixed(5) : ''}°E
                   </div>

@@ -8,7 +8,7 @@ export async function POST(req: NextRequest) {
     const { lat, lng } = await req.json()
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-    const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=19&size=640x640&maptype=satellite&key=${process.env.GOOGLE_MAPS_API_KEY}`
+    const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=20&size=640x640&maptype=hybrid&key=${process.env.GOOGLE_MAPS_API_KEY}`
 
     const imgRes = await fetch(mapUrl)
     if (!imgRes.ok) throw new Error(`Maps API returned ${imgRes.status}`)

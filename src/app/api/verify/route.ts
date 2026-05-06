@@ -11,7 +11,7 @@ async function checkSatellite(lat: number, lng: number): Promise<CheckResult> {
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
     // Fetch the satellite image first to verify it's valid
-    const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=19&size=640x640&maptype=satellite&key=${process.env.GOOGLE_MAPS_API_KEY}`
+    const mapUrl = `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=20&size=640x640&maptype=satellite&key=${process.env.GOOGLE_MAPS_API_KEY}`
 
     // Convert to base64 so we don't rely on URL access from OpenAI servers
     const imgRes = await fetch(mapUrl)
