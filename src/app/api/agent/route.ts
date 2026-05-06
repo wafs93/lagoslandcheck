@@ -1,8 +1,6 @@
 import { NextRequest } from 'next/server'
 import OpenAI from 'openai'
 
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
 const SYSTEM_PROMPT = `You are the Lagos Land Check AI Agent. You help users verify land in Lagos, Nigeria before they buy it.
 
 Your job:
@@ -166,6 +164,7 @@ async function runVerification(lat: number, lng: number, locationLabel: string, 
 export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
+  const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
   const encoder = new TextEncoder()
   const { messages } = await req.json()
   const userInput = messages[messages.length - 1]?.content || ''
