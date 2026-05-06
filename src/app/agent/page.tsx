@@ -202,7 +202,8 @@ export default function AgentPage() {
     } catch {
       setResult({
         overall: 'CAUTION', location_label: userInput.slice(0, 60), confidence: 'medium',
-        checks: CHECKS_CONFIG.map(c => ({ id: c.id, icon: c.icon, name: c.name, status: 'caution' as const, summary: 'Check completed. Review recommended.', details: 'Full details available in the paid report.' }))
+        lat: undefined, lng: undefined,
+        checks: CHECKS_CONFIG.map(c => ({ id: c.id, icon: c.icon, name: c.name, status: 'caution' as const, summary: 'Could not complete check. Try using a Google Maps link instead.', details: 'For best results paste a Google Maps link directly into the input field.' }))
       })
       setActiveTab('satellite')
       setStage('results')
@@ -221,9 +222,13 @@ export default function AgentPage() {
           email, amount: 250000, currency: 'NGN',
           ref: `llc_agent_${Date.now()}`,
           callback: (response: { reference: string }) => {
-            console.log('Payment success:', response.reference)
             setPaid(true)
             setPayLoading(false)
+            if (result) {
+              sessionStorage.setItem('llc_result', JSON.stringify(result))
+              sessionStorage.setItem('llc_ref', response.reference)
+              sessionStorage.setItem('llc_email', email)
+            }
           },
           onClose: () => {
             console.log('Payment closed')
@@ -607,7 +612,16 @@ export default function AgentPage() {
             <div className="appear card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
               <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: '#0A5C45', letterSpacing: '1.5px', marginBottom: 10 }}>EXPORT YOUR REPORT</p>
               <div style={{ display: 'flex', gap: 10 }}>
-                <a href={`/report?lat=${result.lat}&lng=${result.lng}&paid=1`} target="_blank" rel="noopener noreferrer"
+                <a href="#"
+                  onClick={(e) => {
+                    e.preventDefault()
+                    const stored = sessionStorage.getItem('llc_result')
+                    const r = stored ? JSON.parse(stored) : result
+                    const lat = r?.lat || result?.lat || 0
+                    const lng = r?.lng || result?.lng || 0
+                    const ref = sessionStorage.getItem('llc_ref') || ''
+                    window.open('/report?lat=' + lat + '&lng=' + lng + '&paid=1&ref=' + ref, '_blank')
+                  }}
                   style={{ flex: 1, padding: '12px 0', background: '#0A5C45', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
                   📄 Download PDF
                 </a>
