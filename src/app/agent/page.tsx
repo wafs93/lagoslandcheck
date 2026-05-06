@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { useRouter } from 'next/navigation'
 
 interface CheckResult {
   id: string
@@ -9,7 +8,6 @@ interface CheckResult {
   status: 'clear' | 'caution' | 'critical' | 'running' | 'queued'
   summary: string
   details: string
-  icon?: string
 }
 
 interface VerificationResult {
@@ -46,41 +44,35 @@ const STATUS_CONFIG = {
   queued:   { color: '#D1D5DB', bg: '#F9FAFB', badge: '#F3F4F6', text: '#6B7280', label: 'QUEUED' },
 }
 
+const PAYSTACK_KEY = 'pk_live_24d75de9079f18d337d6f0d8910e39ee4cd3415a'
+const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
+
 function StreetViewTab({ url, lat, lng }: { url: string | null; lat?: number; lng?: number }) {
   const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading')
   const [nearestUrl, setNearestUrl] = useState<string | null>(null)
   const [nearestDist, setNearestDist] = useState<number | null>(null)
 
-  // When primary URL fails, try to find nearest Street View within 500m
   const tryNearest = async () => {
-    if (!lat || !lng || !process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY) return
-    try {
-      // Check metadata for nearest Street View
-      const offsets = [
-        [0.002, 0], [-0.002, 0], [0, 0.002], [0, -0.002],
-        [0.001, 0.001], [-0.001, 0.001], [0.001, -0.001], [-0.001, -0.001]
-      ]
-      for (const [dlat, dlng] of offsets) {
-        const checkLat = lat + dlat
-        const checkLng = lng + dlng
-        const metaUrl = `https://maps.googleapis.com/maps/api/streetview/metadata?location=${checkLat},${checkLng}&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
-        const res = await fetch(metaUrl)
+    if (!lat || !lng || !GOOGLE_MAPS_KEY) return
+    const offsets = [[0.002,0],[-0.002,0],[0,0.002],[0,-0.002],[0.001,0.001],[-0.001,0.001],[0.001,-0.001],[-0.001,-0.001]]
+    for (const [dlat, dlng] of offsets) {
+      try {
+        const res = await fetch(`https://maps.googleapis.com/maps/api/streetview/metadata?location=${lat+dlat},${lng+dlng}&key=${GOOGLE_MAPS_KEY}`)
         const data = await res.json()
         if (data.status === 'OK') {
-          const dist = Math.round(Math.sqrt((dlat * 111000) ** 2 + (dlng * 111000) ** 2))
-          const nearest = `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${checkLat},${checkLng}&fov=90&pitch=0&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`
-          setNearestUrl(nearest)
+          const dist = Math.round(Math.sqrt(((dlat)*111000)**2 + ((dlng)*111000)**2))
+          setNearestUrl(`https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${lat+dlat},${lng+dlng}&fov=90&pitch=0&key=${GOOGLE_MAPS_KEY}`)
           setNearestDist(dist)
           return
         }
-      }
-    } catch { /* silently fail */ }
+      } catch { /* continue */ }
+    }
   }
 
   if (!url) return (
-    <div style={{ height: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0A1628', gap: 10 }}>
-      <span style={{ fontSize: 36 }}>🗺️</span>
-      <span style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>Street View not available for this location</span>
+    <div style={{ height: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0A1628', color: 'rgba(255,255,255,0.5)', gap: 10 }}>
+      <span style={{ fontSize: 32 }}>🗺️</span>
+      <span style={{ fontSize: 13 }}>No Street View available</span>
       {lat && lng && (
         <a href={`https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m1!1e3`} target="_blank" rel="noopener noreferrer"
           style={{ padding: '7px 16px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', fontSize: 12, textDecoration: 'none' }}>
@@ -92,52 +84,41 @@ function StreetViewTab({ url, lat, lng }: { url: string | null; lat?: number; ln
 
   return (
     <div style={{ position: 'relative', minHeight: 240 }}>
-      {/* Loading state */}
       {status === 'loading' && !nearestUrl && (
         <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0A1628', gap: 10, position: 'absolute', inset: 0, zIndex: 1 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: "'JetBrains Mono',monospace" }}>Loading street view...</span>
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>Loading street view...</span>
         </div>
       )}
-
-      {/* Primary image */}
       {!nearestUrl && (
         <img src={url} alt="Street view"
           style={{ width: '100%', height: 240, objectFit: 'cover', display: status === 'error' ? 'none' : 'block' }}
           onLoad={() => setStatus('ok')}
           onError={() => { setStatus('error'); tryNearest() }} />
       )}
-
-      {/* Nearest fallback image */}
       {nearestUrl && (
         <div style={{ position: 'relative' }}>
           <img src={nearestUrl} alt="Nearest street view" style={{ width: '100%', height: 240, objectFit: 'cover', display: 'block' }} />
-          <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.75)', borderRadius: 6, padding: '5px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", maxWidth: 240 }}>
+          <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.75)', borderRadius: 6, padding: '5px 10px', fontSize: 10, color: '#fff', fontFamily: 'monospace' }}>
             📷 Nearest road view · {nearestDist}m from this location
           </div>
         </div>
       )}
-
-      {/* No coverage anywhere */}
       {status === 'error' && !nearestUrl && (
         <div style={{ height: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0A1628', color: 'rgba(255,255,255,0.5)', gap: 10 }}>
           <span style={{ fontSize: 36 }}>🗺️</span>
-          <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 13, fontWeight: 500, marginBottom: 4 }}>Street View not available for exact location</div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: "'JetBrains Mono',monospace", marginBottom: 12 }}>No coverage within 500m · Common in Lagos residential areas</div>
-          </div>
+          <span style={{ fontSize: 13, fontWeight: 500 }}>No Street View coverage here</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>Common in Lagos residential streets</span>
           {lat && lng && (
             <a href={`https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m1!1e3`} target="_blank" rel="noopener noreferrer"
-              style={{ padding: '8px 18px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', fontSize: 12, textDecoration: 'none' }}>
+              style={{ padding: '7px 16px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', fontSize: 12, textDecoration: 'none' }}>
               Open in Google Maps →
             </a>
           )}
         </div>
       )}
-
-      {/* Success badge */}
       {status === 'ok' && !nearestUrl && (
-        <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace" }}>
+        <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: 'monospace' }}>
           📷 Street View · Ground level
         </div>
       )}
@@ -146,7 +127,6 @@ function StreetViewTab({ url, lat, lng }: { url: string | null; lat?: number; ln
 }
 
 export default function AgentPage() {
-  const router = useRouter()
   const [stage, setStage] = useState<Stage>('input')
   const [input, setInput] = useState('')
   const [processingStep, setProcessingStep] = useState(0)
@@ -155,14 +135,16 @@ export default function AgentPage() {
   const [expanded, setExpanded] = useState<string | null>(null)
   const [imgZoom, setImgZoom] = useState(false)
   const [activeTab, setActiveTab] = useState<'satellite' | 'street'>('satellite')
+  const [paid, setPaid] = useState(false)
+  const [email, setEmail] = useState('')
+  const [payLoading, setPayLoading] = useState(false)
   const [chatOpen, setChatOpen] = useState(false)
   const [chatInput, setChatInput] = useState('')
   const [chatMessages, setChatMessages] = useState<{role:'user'|'agent';text:string}[]>([])
   const [chatLoading, setChatLoading] = useState(false)
-  const [paid, setPaid] = useState(false)
-  const [email, setEmail] = useState('')
-  const [payLoading, setPayLoading] = useState(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
+
+  const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 
   const runVerification = async (userInput: string) => {
     if (!userInput.trim()) return
@@ -170,81 +152,106 @@ export default function AgentPage() {
     setProcessingStep(0)
     setProcessingChecks([])
 
+    // Animate processing steps
     const steps = ['locate', ...CHECKS_CONFIG.map(c => c.id)]
-    for (let i = 0; i < steps.length; i++) {
-      await new Promise(r => setTimeout(r, 900))
-      setProcessingStep(i + 1)
-      setProcessingChecks(prev => [...prev, steps[i]])
+    const animate = async () => {
+      for (let i = 0; i < steps.length; i++) {
+        await new Promise(r => setTimeout(r, 800))
+        setProcessingStep(i + 1)
+        setProcessingChecks(prev => [...prev, steps[i]])
+      }
     }
+    animate()
 
     try {
       const res = await fetch('/api/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [{ role: 'user', content: `Verify this land location and run all 6 checks: ${userInput}` }] })
+        body: JSON.stringify({ messages: [{ role: 'user', content: userInput }] })
       })
+
       const reader = res.body?.getReader()
       const decoder = new TextDecoder()
       let verificationData: VerificationResult | null = null
-      while (reader) {
-        const { done, value } = await reader.read()
-        if (done) break
-        for (const line of decoder.decode(value).split('\n')) {
-          if (!line.startsWith('data: ')) continue
-          try {
-            const data = JSON.parse(line.slice(6))
-            if (data.type === 'verification_result') verificationData = data.data
-          } catch { /* skip */ }
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          for (const line of decoder.decode(value).split('\n')) {
+            if (!line.startsWith('data: ')) continue
+            try {
+              const data = JSON.parse(line.slice(6))
+              if (data.type === 'verification_result') verificationData = data.data
+            } catch { /* skip */ }
+          }
         }
       }
-      if (verificationData) { setResult(verificationData); setActiveTab('satellite'); setStage('results') }
-      else throw new Error('No result')
+
+      if (verificationData) {
+        // Store in sessionStorage for report page
+        sessionStorage.setItem('llc_result', JSON.stringify(verificationData))
+        setResult(verificationData)
+        setActiveTab('satellite')
+        setStage('results')
+      } else {
+        setResult({
+          overall: 'CAUTION',
+          location_label: userInput.slice(0, 60),
+          confidence: 'low',
+          checks: CHECKS_CONFIG.map(c => ({
+            id: c.id, name: c.name, status: 'caution' as const,
+            summary: 'Could not complete check. Try a Google Maps link.',
+            details: 'For best results, paste a Google Maps link with coordinates.'
+          }))
+        })
+        setActiveTab('satellite')
+        setStage('results')
+      }
     } catch {
-      setResult({
-        overall: 'CAUTION', location_label: userInput.slice(0, 60), confidence: 'medium',
-        lat: undefined, lng: undefined,
-        checks: CHECKS_CONFIG.map(c => ({ id: c.id, icon: c.icon, name: c.name, status: 'caution' as const, summary: 'Could not complete check. Try using a Google Maps link instead.', details: 'For best results paste a Google Maps link directly into the input field.' }))
-      })
-      setActiveTab('satellite')
       setStage('results')
+      setResult({
+        overall: 'CAUTION',
+        location_label: userInput.slice(0, 60),
+        confidence: 'low',
+        checks: CHECKS_CONFIG.map(c => ({
+          id: c.id, name: c.name, status: 'caution' as const,
+          summary: 'Connection error. Please try again.',
+          details: ''
+        }))
+      })
     }
   }
 
   const initPaystack = () => {
-    if (!email.trim()) return
+    if (!isValidEmail(email)) return
     setPayLoading(true)
     const script = document.createElement('script')
     script.src = 'https://js.paystack.co/v1/inline.js'
     script.onload = () => {
       try {
         const handler = (window as any).PaystackPop.setup({
-          key: 'pk_test_17b32b318559c98e18d9413827fe51dcc812d61e',
-          email, amount: 250000, currency: 'NGN',
-          ref: `llc_agent_${Date.now()}`,
+          key: PAYSTACK_KEY,
+          email,
+          amount: 250000,
+          currency: 'NGN',
+          ref: `llc_${Date.now()}`,
           callback: (response: { reference: string }) => {
             setPaid(true)
             setPayLoading(false)
-            if (result) {
-              sessionStorage.setItem('llc_result', JSON.stringify(result))
-              sessionStorage.setItem('llc_ref', response.reference)
-              sessionStorage.setItem('llc_email', email)
-            }
+            // Store payment info
+            sessionStorage.setItem('llc_ref', response.reference)
+            sessionStorage.setItem('llc_email', email)
+            if (result) sessionStorage.setItem('llc_result', JSON.stringify(result))
           },
-          onClose: () => {
-            console.log('Payment closed')
-            setPayLoading(false)
-          }
+          onClose: () => setPayLoading(false)
         })
         handler.openIframe()
-      } catch (err) {
-        console.error('Paystack error:', err)
+      } catch {
         setPayLoading(false)
       }
     }
-    script.onerror = () => {
-      console.error('Failed to load Paystack')
-      setPayLoading(false)
-    }
+    script.onerror = () => setPayLoading(false)
     document.head.appendChild(script)
   }
 
@@ -255,29 +262,46 @@ export default function AgentPage() {
     setChatInput('')
     setChatLoading(true)
     try {
-      const context = result ? `User already verified: ${result.location_label}. Overall: ${result.overall}.` : ''
+      const context = result ? `User verified: ${result.location_label}. Risk: ${result.overall}.` : ''
       const res = await fetch('/api/agent', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: [{ role: 'user', content: context ? `${context}\n\nUser question: ${msg}` : msg }] })
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [{ role: 'user', content: context ? `${context}\n\nQuestion: ${msg}` : msg }] })
       })
       const reader = res.body?.getReader()
       const decoder = new TextDecoder()
       let text = ''
-      while (reader) {
-        const { done, value } = await reader.read()
-        if (done) break
-        for (const line of decoder.decode(value).split('\n')) {
-          if (!line.startsWith('data: ')) continue
-          try { const d = JSON.parse(line.slice(6)); if (d.type === 'text') text += d.content } catch { /* skip */ }
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          for (const line of decoder.decode(value).split('\n')) {
+            if (!line.startsWith('data: ')) continue
+            try { const d = JSON.parse(line.slice(6)); if (d.type === 'text') text += d.content } catch { /* skip */ }
+          }
         }
       }
-      setChatMessages(prev => [...prev, { role: 'agent', text: text || 'I could not get a response. Please try again.' }])
-    } catch { setChatMessages(prev => [...prev, { role: 'agent', text: 'Connection error. Please try again.' }]) }
+      setChatMessages(prev => [...prev, { role: 'agent', text: text || 'Could not get response. Please try again.' }])
+    } catch {
+      setChatMessages(prev => [...prev, { role: 'agent', text: 'Connection error. Please try again.' }])
+    }
     setChatLoading(false)
   }
 
-  const satelliteUrl = result?.lat && result?.lng ? `https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lng}&zoom=20&size=640x640&maptype=hybrid&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}` : null
-  const streetViewUrl = result?.lat && result?.lng ? `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${result.lat},${result.lng}&fov=90&pitch=0&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}` : null
+  const openReport = () => {
+    const lat = result?.lat || 0
+    const lng = result?.lng || 0
+    const ref = sessionStorage.getItem('llc_ref') || ''
+    window.open(`/report?lat=${lat}&lng=${lng}&paid=1&ref=${ref}`, '_blank')
+  }
+
+  const satelliteUrl = result?.lat && result?.lng
+    ? `https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lng}&zoom=20&size=640x640&maptype=hybrid&key=${GOOGLE_MAPS_KEY}`
+    : null
+  const streetViewUrl = result?.lat && result?.lng
+    ? `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${result.lat},${result.lng}&fov=90&pitch=0&key=${GOOGLE_MAPS_KEY}`
+    : null
+
   const rc = result ? RISK_CONFIG[result.overall] : null
   const hasBuilding = result?.checks.find(c => c.id === 'satellite')?.summary?.toLowerCase().includes('building')
 
@@ -296,7 +320,7 @@ export default function AgentPage() {
 
       {/* NAV */}
       <nav style={{ background: '#07382C', padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: 10, position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,0,0,0.2)' }}>
-        <button onClick={() => stage === 'input' ? router.push('/') : setStage('input')}
+        <button onClick={() => stage === 'input' ? window.location.href = '/' : setStage('input')}
           style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 7, padding: '5px 12px', color: '#fff', fontSize: 12, cursor: 'pointer' }}>
           ← {stage === 'input' ? 'Home' : 'New check'}
         </button>
@@ -306,42 +330,41 @@ export default function AgentPage() {
         <span style={{ fontWeight: 700, fontSize: 14, color: '#fff' }}>Lagos Land Agent</span>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ADE80', animation: 'pulse 2s infinite', display: 'inline-block' }} />
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: "'JetBrains Mono',monospace" }}>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace' }}>
             {stage === 'input' ? 'Ready' : stage === 'processing' ? 'Analyzing...' : 'Report ready'}
           </span>
         </div>
       </nav>
 
-      {/* ── STAGE 1: INPUT ── */}
+      {/* STAGE 1: INPUT */}
       {stage === 'input' && (
         <div style={{ maxWidth: 580, margin: '0 auto', padding: '2rem 1rem' }} className="appear">
           <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(10,92,69,0.08)', border: '1px solid rgba(10,92,69,0.15)', borderRadius: 24, padding: '5px 14px', fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: '#0A5C45', letterSpacing: '1.5px', marginBottom: 14 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(10,92,69,0.08)', border: '1px solid rgba(10,92,69,0.15)', borderRadius: 24, padding: '5px 14px', fontSize: 10, fontFamily: 'monospace', color: '#0A5C45', letterSpacing: '1.5px', marginBottom: 14 }}>
               6 CHECKS · UNDER 2 MINUTES · NO SITE VISIT
             </div>
-            <h1 style={{ fontFamily: "'Lora',serif", fontSize: 'clamp(24px,5vw,36px)', fontWeight: 600, color: '#111827', lineHeight: 1.2, marginBottom: 10, letterSpacing: '-0.5px' }}>
+            <h1 style={{ fontFamily: "'Lora',serif", fontSize: 'clamp(24px,5vw,36px)', fontWeight: 600, color: '#111827', lineHeight: 1.2, marginBottom: 10 }}>
               Where is the land<br/>you want to verify?
             </h1>
-            <p style={{ fontSize: 14, color: '#6B7280', lineHeight: 1.7 }}>Paste a Google Maps link, What3Words, coordinates, or any Lagos address.</p>
+            <p style={{ fontSize: 14, color: '#6B7280', lineHeight: 1.7 }}>Paste a Google Maps link, coordinates, or any Lagos address.</p>
           </div>
 
-          {/* Input */}
           <div className="card" style={{ marginBottom: '1rem', overflow: 'hidden' }}>
             <div style={{ padding: '1.25rem 1.25rem 0' }}>
               <textarea ref={inputRef} value={input} onChange={e => setInput(e.target.value)}
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runVerification(input) } }}
-                placeholder="e.g. maps.google.com/?q=6.4698,3.5721 or 'Plot 14, Thomas Estate, Ajah'"
+                placeholder="e.g. https://maps.google.com/?q=6.4698,3.5721 or 'Plot 14, Thomas Estate, Ajah'"
                 rows={3}
                 style={{ width: '100%', border: '1.5px solid #E5E7EB', borderRadius: 12, padding: '12px 14px', fontSize: 14, fontFamily: "'Syne',sans-serif", color: '#111827', background: '#FAFAFA', lineHeight: 1.6, resize: 'none', display: 'block', transition: 'border-color 0.2s' }}
                 onFocus={e => e.target.style.borderColor = '#0A5C45'} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, margin: '10px 0' }}>
                 {[
-                  { label: '🔗 Maps link', val: 'https://maps.google.com/?q=6.4698,3.5721' },
-                  { label: '📐 What3Words', val: '///mango.river.chest' },
+                  { label: '🔗 Maps link', val: 'https://maps.google.com/?q=6.5244,3.3792' },
                   { label: '📍 Address', val: 'Plot 14, Thomas Estate, Ajah, Lagos' },
+                  { label: '📐 Coordinates', val: '6.4698, 3.5721' },
                 ].map(ex => (
                   <button key={ex.label} onClick={() => setInput(ex.val)}
-                    style={{ fontSize: 11, padding: '5px 12px', borderRadius: 16, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', cursor: 'pointer', fontFamily: "'JetBrains Mono',monospace" }}>
+                    style={{ fontSize: 11, padding: '5px 12px', borderRadius: 16, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', cursor: 'pointer', fontFamily: 'monospace' }}>
                     {ex.label}
                   </button>
                 ))}
@@ -353,27 +376,21 @@ export default function AgentPage() {
             </button>
           </div>
 
-          {/* Trust indicators */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: '1.25rem' }}>
-            {[
-              { icon: '🛰️', t: '6 checks', s: 'Satellite + databases' },
-              { icon: '⚡', t: 'Under 2 min', s: 'Real-time results' },
-              { icon: '🌍', t: 'Works abroad', s: 'No site visit needed' },
-            ].map(f => (
+            {[{ icon: '🛰️', t: '6 checks', s: 'Satellite + databases' }, { icon: '⚡', t: 'Under 2 min', s: 'Real-time results' }, { icon: '🌍', t: 'Works abroad', s: 'No site visit' }].map(f => (
               <div key={f.t} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '12px 8px', textAlign: 'center' }}>
                 <div style={{ fontSize: 22, marginBottom: 4 }}>{f.icon}</div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: '#111827' }}>{f.t}</div>
-                <div style={{ fontSize: 10, color: '#9CA3AF', fontFamily: "'JetBrains Mono',monospace", marginTop: 2 }}>{f.s}</div>
+                <div style={{ fontSize: 10, color: '#9CA3AF', fontFamily: 'monospace', marginTop: 2 }}>{f.s}</div>
               </div>
             ))}
           </div>
 
-          {/* Checks list */}
           <div className="card" style={{ padding: '1.25rem' }}>
-            <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: '#0A5C45', letterSpacing: '1.5px', marginBottom: 10 }}>6 CHECKS WE RUN</p>
+            <p style={{ fontSize: 10, fontFamily: 'monospace', color: '#0A5C45', letterSpacing: '1.5px', marginBottom: 10 }}>6 CHECKS WE RUN</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
               {CHECKS_CONFIG.map(c => (
-                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: '#F9FAFB', borderRadius: 9, border: '0.5px solid #F3F4F6' }}>
+                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: '#F9FAFB', borderRadius: 9 }}>
                   <span style={{ fontSize: 16 }}>{c.icon}</span>
                   <span style={{ fontSize: 13, color: '#374151', flex: 1 }}>{c.name}</span>
                 </div>
@@ -381,14 +398,14 @@ export default function AgentPage() {
             </div>
           </div>
 
-          <p style={{ textAlign: 'center', fontSize: 11, color: '#9CA3AF', marginTop: '1.25rem', fontFamily: "'JetBrains Mono',monospace", lineHeight: 1.8 }}>
+          <p style={{ textAlign: 'center', fontSize: 11, color: '#9CA3AF', marginTop: '1.25rem', fontFamily: 'monospace', lineHeight: 1.8 }}>
             Powered by Lagos public data + satellite analysis<br/>
             Used by diaspora buyers · Lawyers · Estate professionals
           </p>
         </div>
       )}
 
-      {/* ── STAGE 2: PROCESSING ── */}
+      {/* STAGE 2: PROCESSING */}
       {stage === 'processing' && (
         <div style={{ maxWidth: 500, margin: '0 auto', padding: '2.5rem 1rem' }} className="appear">
           <div className="card" style={{ padding: '2rem' }}>
@@ -397,7 +414,7 @@ export default function AgentPage() {
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" style={{ animation: 'spin 2s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 2a10 10 0 0 0-10 10" opacity="0.3"/></svg>
               </div>
               <h2 style={{ fontFamily: "'Lora',serif", fontSize: 22, fontWeight: 600, color: '#111827', marginBottom: 6 }}>Analyzing the land</h2>
-              <p style={{ fontSize: 12, color: '#9CA3AF', fontFamily: "'JetBrains Mono',monospace" }}>{input.slice(0, 55)}{input.length > 55 ? '...' : ''}</p>
+              <p style={{ fontSize: 12, color: '#9CA3AF', fontFamily: 'monospace' }}>{input.slice(0, 55)}{input.length > 55 ? '...' : ''}</p>
             </div>
 
             <div style={{ background: '#F3F4F6', borderRadius: 8, height: 6, marginBottom: '1.75rem', overflow: 'hidden' }}>
@@ -418,21 +435,18 @@ export default function AgentPage() {
                     <span style={{ fontSize: 13, color: done ? '#065F46' : active ? '#1D4ED8' : '#9CA3AF', fontWeight: done || active ? 500 : 400 }}>
                       {step.icon} {step.label}
                     </span>
-                    {done && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#22C55E', fontFamily: "'JetBrains Mono',monospace" }}>✓</span>}
-                    {active && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#3B82F6', fontFamily: "'JetBrains Mono',monospace", animation: 'pulse 1s infinite' }}>...</span>}
+                    {done && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#22C55E', fontFamily: 'monospace' }}>✓</span>}
+                    {active && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#3B82F6', fontFamily: 'monospace', animation: 'pulse 1s infinite' }}>...</span>}
                   </div>
                 )
               })}
             </div>
-
-            <p style={{ textAlign: 'center', fontSize: 11, color: '#9CA3AF', marginTop: '1.5rem', fontFamily: "'JetBrains Mono',monospace" }}>
-              Under 2 minutes · Do not close this page
-            </p>
+            <p style={{ textAlign: 'center', fontSize: 11, color: '#9CA3AF', marginTop: '1.5rem', fontFamily: 'monospace' }}>Under 2 minutes · Do not close this page</p>
           </div>
         </div>
       )}
 
-      {/* ── STAGE 3: RESULTS ── */}
+      {/* STAGE 3: RESULTS */}
       {stage === 'results' && result && rc && (
         <div style={{ maxWidth: 660, margin: '0 auto', padding: '1.25rem 1rem 4rem' }}>
 
@@ -440,16 +454,16 @@ export default function AgentPage() {
           <div className="appear card" style={{ background: rc.bg, border: `1px solid ${rc.border}`, marginBottom: '1rem', padding: '1.25rem 1.5rem' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
               <div>
-                <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: rc.text, letterSpacing: '1.5px', opacity: 0.7, marginBottom: 5 }}>OVERALL RISK ASSESSMENT</p>
+                <p style={{ fontSize: 10, fontFamily: 'monospace', color: rc.text, letterSpacing: '1.5px', opacity: 0.7, marginBottom: 5 }}>OVERALL RISK ASSESSMENT</p>
                 <div style={{ fontFamily: "'Lora',serif", fontSize: 26, fontWeight: 600, color: rc.text, marginBottom: 4 }}>{rc.label}</div>
                 <p style={{ fontSize: 13, color: rc.text, opacity: 0.8, lineHeight: 1.6, maxWidth: 360 }}>{rc.sub}</p>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: rc.text, opacity: 0.6, marginBottom: 4 }}>LOCATION</div>
-                <div style={{ fontSize: 12, color: rc.text, fontWeight: 500, maxWidth: 180, lineHeight: 1.4 }}>{result.location_label}</div>
-                {result.confidence !== 'high' && (
-                  <div style={{ marginTop: 6, fontSize: 9, fontFamily: "'JetBrains Mono',monospace", background: '#FEF3C7', color: '#92400E', padding: '2px 8px', borderRadius: 4, display: 'inline-block' }}>
-                    {result.confidence?.toUpperCase()} CONFIDENCE
+                <div style={{ fontSize: 10, fontFamily: 'monospace', color: rc.text, opacity: 0.6, marginBottom: 4 }}>LOCATION</div>
+                <div style={{ fontSize: 12, color: rc.text, fontWeight: 500, maxWidth: 200, lineHeight: 1.4 }}>{result.location_label}</div>
+                {result.lat && result.lng && (
+                  <div style={{ fontSize: 10, fontFamily: 'monospace', color: rc.text, opacity: 0.5, marginTop: 4 }}>
+                    {result.lat.toFixed(4)}°N, {result.lng.toFixed(4)}°E
                   </div>
                 )}
               </div>
@@ -461,60 +475,54 @@ export default function AgentPage() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
               {['Low Risk', 'Medium Risk', 'High Risk'].map(l => (
-                <span key={l} style={{ fontSize: 9, color: rc.text, opacity: 0.5, fontFamily: "'JetBrains Mono',monospace" }}>{l}</span>
+                <span key={l} style={{ fontSize: 9, color: rc.text, opacity: 0.5, fontFamily: 'monospace' }}>{l}</span>
               ))}
             </div>
           </div>
 
-          {/* Map Viewer */}
+          {/* Image Viewer */}
           {(satelliteUrl || streetViewUrl) && (
             <div className="appear card" style={{ marginBottom: '1rem', overflow: 'hidden' }}>
               <div style={{ display: 'flex', background: '#0A1628', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                {([
+                {[
                   { id: 'satellite' as const, label: '🛰️ Satellite', show: !!satelliteUrl },
                   { id: 'street' as const, label: '📷 Street View', show: !!streetViewUrl },
-                ] as Array<{id:'satellite'|'street',label:string,show:boolean}>).filter(t => t.show).map(tab => (
+                ].filter(t => t.show).map(tab => (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                    style={{ padding: '10px 14px', background: activeTab === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', borderBottom: activeTab === tab.id ? '2px solid #CFAF6E' : '2px solid transparent', color: activeTab === tab.id ? '#fff' : 'rgba(255,255,255,0.4)', fontSize: 11, fontFamily: "'JetBrains Mono',monospace", cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    style={{ padding: '10px 14px', background: activeTab === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', borderBottom: activeTab === tab.id ? '2px solid #CFAF6E' : '2px solid transparent', color: activeTab === tab.id ? '#fff' : 'rgba(255,255,255,0.4)', fontSize: 11, fontFamily: 'monospace', cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     {tab.label}
                   </button>
                 ))}
                 <div style={{ flex: 1 }} />
-                <div style={{ padding: '10px 10px', fontSize: 9, color: 'rgba(255,255,255,0.25)', fontFamily: "'JetBrains Mono',monospace", alignSelf: 'center' }}>
+                <div style={{ padding: '10px 10px', fontSize: 9, color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', alignSelf: 'center' }}>
                   {result.lat?.toFixed(4)}°N {result.lng?.toFixed(4)}°E
                 </div>
               </div>
 
-              <div style={{ position: 'relative' }}>
-                {/* Satellite tab — always rendered, hidden when not active */}
-                <div style={{ display: activeTab === 'satellite' ? 'block' : 'none' }}>
-                  {satelliteUrl ? (
-                    <div style={{ position: 'relative', cursor: 'zoom-in' }} onClick={() => setImgZoom(true)}>
-                      <img src={satelliteUrl} alt="Satellite" style={{ width: '100%', height: 240, objectFit: 'cover', display: 'block' }}
-                        onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                      <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace" }}>
-                        🛰️ Tap to zoom · AI analysed
+              <div style={{ display: activeTab === 'satellite' ? 'block' : 'none' }}>
+                {satelliteUrl ? (
+                  <div style={{ position: 'relative', cursor: 'zoom-in' }} onClick={() => setImgZoom(true)}>
+                    <img src={satelliteUrl} alt="Satellite" style={{ width: '100%', height: 260, objectFit: 'cover', display: 'block' }}
+                      onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                    <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: 'monospace' }}>
+                      🛰️ Tap to zoom · AI analysed · zoom 20
+                    </div>
+                    {hasBuilding && (
+                      <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.92)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: 'monospace', fontWeight: 700 }}>
+                        ⚠️ BUILDING DETECTED
                       </div>
-                      {hasBuilding && (
-                        <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.92)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: "'JetBrains Mono',monospace", fontWeight: 700 }}>
-                          ⚠️ BUILDING DETECTED
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div style={{ height: 240, background: '#0A1628', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 13, fontFamily: "'JetBrains Mono',monospace" }}>
-                      Satellite image unavailable
-                    </div>
-                  )}
-                </div>
-
-                {/* Street View tab — only mounted after user clicks it */}
-                {activeTab === 'street' && (
-                  <StreetViewTab key="street-view" url={streetViewUrl} lat={result.lat} lng={result.lng} />
+                    )}
+                  </div>
+                ) : (
+                  <div style={{ height: 260, background: '#0A1628', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 13, fontFamily: 'monospace' }}>
+                    Satellite image not available for this location
+                  </div>
                 )}
-
-
               </div>
+
+              {activeTab === 'street' && (
+                <StreetViewTab key="sv" url={streetViewUrl} lat={result.lat} lng={result.lng} />
+              )}
             </div>
           )}
 
@@ -522,9 +530,9 @@ export default function AgentPage() {
           {imgZoom && result.lat && result.lng && (
             <div onClick={() => setImgZoom(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.95)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', cursor: 'zoom-out' }}>
               <div style={{ maxWidth: 700, width: '100%' }}>
-                <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lng}&zoom=20&size=640x640&maptype=hybrid&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`}
+                <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lng}&zoom=20&size=640x640&maptype=hybrid&key=${GOOGLE_MAPS_KEY}`}
                   alt="HD Satellite" style={{ width: '100%', borderRadius: 12 }} />
-                <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 10, fontFamily: "'JetBrains Mono',monospace" }}>Tap anywhere to close</p>
+                <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 10, fontFamily: 'monospace' }}>Tap anywhere to close</p>
               </div>
             </div>
           )}
@@ -532,8 +540,8 @@ export default function AgentPage() {
           {/* 6 Checks */}
           <div className="appear" style={{ marginBottom: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: '#6B7280', letterSpacing: '1.5px' }}>6 RISK CHECKS</p>
-              <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", background: paid ? '#D1FAE5' : '#FEF3C7', color: paid ? '#065F46' : '#92400E', padding: '2px 8px', borderRadius: 4 }}>
+              <p style={{ fontSize: 10, fontFamily: 'monospace', color: '#6B7280', letterSpacing: '1.5px' }}>6 RISK CHECKS</p>
+              <span style={{ fontSize: 10, fontFamily: 'monospace', background: paid ? '#D1FAE5' : '#FEF3C7', color: paid ? '#065F46' : '#92400E', padding: '2px 8px', borderRadius: 4 }}>
                 {paid ? '✓ UNLOCKED' : 'FREE PREVIEW'}
               </span>
             </div>
@@ -551,7 +559,7 @@ export default function AgentPage() {
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3, flexWrap: 'wrap' }}>
                             <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{check.name}</span>
-                            <span style={{ fontSize: 9, fontFamily: "'JetBrains Mono',monospace", padding: '2px 8px', borderRadius: 4, background: sc.badge, color: sc.text, fontWeight: 700 }}>{sc.label}</span>
+                            <span style={{ fontSize: 9, fontFamily: 'monospace', padding: '2px 8px', borderRadius: 4, background: sc.badge, color: sc.text, fontWeight: 700 }}>{sc.label}</span>
                           </div>
                           <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>{check.summary}</p>
                         </div>
@@ -564,11 +572,9 @@ export default function AgentPage() {
                       )}
                       {!paid && check.details && (
                         <div style={{ marginTop: 8, position: 'relative' }}>
-                          <p style={{ fontSize: 12, color: '#374151', lineHeight: 1.75, filter: 'blur(4px)', userSelect: 'none', pointerEvents: 'none' }}>
-                            {check.details}
-                          </p>
+                          <p style={{ fontSize: 12, color: '#374151', lineHeight: 1.75, filter: 'blur(4px)', userSelect: 'none', pointerEvents: 'none' }}>{check.details}</p>
                           <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", background: '#0A5C45', color: '#fff', padding: '3px 12px', borderRadius: 10 }}>🔒 Unlock — ₦2,500</span>
+                            <span style={{ fontSize: 10, fontFamily: 'monospace', background: '#0A5C45', color: '#fff', padding: '3px 12px', borderRadius: 10 }}>🔒 Unlock — ₦2,500</span>
                           </div>
                         </div>
                       )}
@@ -582,7 +588,7 @@ export default function AgentPage() {
           {/* Paywall */}
           {!paid && (
             <div className="appear card" style={{ background: 'linear-gradient(135deg,#0A5C45,#07382C)', border: 'none', padding: '1.5rem', marginBottom: '1rem' }}>
-              <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', marginBottom: 6 }}>UNLOCK FULL REPORT</p>
+              <p style={{ fontSize: 10, fontFamily: 'monospace', color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', marginBottom: 6 }}>UNLOCK FULL REPORT</p>
               <h3 style={{ fontFamily: "'Lora',serif", fontSize: 20, color: '#fff', fontWeight: 600, marginBottom: 8 }}>Get the complete verification</h3>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: '1.25rem' }}>
                 {['📋 Full details for all 6 checks', '🛰️ Satellite imagery analysis', '📍 Exact gazette distances', '⚖️ Court case details', '📄 PDF certificate', '✅ Share with lawyer'].map(f => (
@@ -592,39 +598,38 @@ export default function AgentPage() {
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && initPaystack()}
                 placeholder="your@email.com"
-                style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: `1.5px solid ${email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? 'rgba(239,68,68,0.6)' : 'rgba(255,255,255,0.25)'}`, background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 14, fontFamily: "'Syne',sans-serif", marginBottom: 4 }} />
-              {email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && (
-                <p style={{ fontSize: 11, color: 'rgba(239,68,68,0.8)', marginBottom: 10, fontFamily: "'JetBrains Mono',monospace" }}>Please enter a valid email address</p>
+                style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: `1.5px solid ${email && !isValidEmail(email) ? 'rgba(239,68,68,0.6)' : 'rgba(255,255,255,0.25)'}`, background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 14, fontFamily: "'Syne',sans-serif", marginBottom: 4 }} />
+              {email && !isValidEmail(email) && (
+                <p style={{ fontSize: 11, color: 'rgba(239,68,68,0.8)', marginBottom: 6, fontFamily: 'monospace' }}>Please enter a valid email address</p>
               )}
-              {(!email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) && <div style={{ marginBottom: 10 }} />}
-              <button onClick={initPaystack} disabled={payLoading || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)}
-                style={{ width: '100%', padding: '14px 0', background: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? 'linear-gradient(135deg,#CFAF6E,#B8942A)' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 11, fontSize: 15, fontWeight: 700, color: '#fff', cursor: /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? 'pointer' : 'not-allowed', fontFamily: "'Syne',sans-serif" }}>
+              <div style={{ marginBottom: isValidEmail(email) ? 10 : 0 }} />
+              <button onClick={initPaystack} disabled={payLoading || !isValidEmail(email)}
+                style={{ width: '100%', padding: '14px 0', background: isValidEmail(email) ? 'linear-gradient(135deg,#CFAF6E,#B8942A)' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 11, fontSize: 15, fontWeight: 700, color: '#fff', cursor: isValidEmail(email) ? 'pointer' : 'not-allowed', fontFamily: "'Syne',sans-serif" }}>
                 {payLoading ? '⏳ Opening payment...' : '🔓 Unlock Full Report — ₦2,500'}
               </button>
-              <p style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 8, fontFamily: "'JetBrains Mono',monospace" }}>
+              <p style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 8, fontFamily: 'monospace' }}>
                 Secure via Paystack · Card, bank transfer, USSD
               </p>
             </div>
           )}
 
-          {/* Export (paid) */}
+          {/* Payment Success + Export */}
           {paid && (
-            <div className="appear card" style={{ padding: '1.25rem', marginBottom: '1rem' }}>
-              <p style={{ fontSize: 10, fontFamily: "'JetBrains Mono',monospace", color: '#0A5C45', letterSpacing: '1.5px', marginBottom: 10 }}>EXPORT YOUR REPORT</p>
+            <div className="appear card" style={{ padding: '1.5rem', marginBottom: '1rem', border: '1px solid #BBF7D0', background: '#F0FDF4' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '1rem' }}>
+                <div style={{ width: 40, height: 40, background: '#22C55E', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>
+                </div>
+                <div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#065F46' }}>Payment successful!</div>
+                  <div style={{ fontSize: 12, color: '#059669' }}>Full report unlocked. Receipt sent to {email}</div>
+                </div>
+              </div>
               <div style={{ display: 'flex', gap: 10 }}>
-                <a href="#"
-                  onClick={(e) => {
-                    e.preventDefault()
-                    const stored = sessionStorage.getItem('llc_result')
-                    const r = stored ? JSON.parse(stored) : result
-                    const lat = r?.lat || result?.lat || 0
-                    const lng = r?.lng || result?.lng || 0
-                    const ref = sessionStorage.getItem('llc_ref') || ''
-                    window.open('/report?lat=' + lat + '&lng=' + lng + '&paid=1&ref=' + ref, '_blank')
-                  }}
-                  style={{ flex: 1, padding: '12px 0', background: '#0A5C45', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
-                  📄 Download PDF
-                </a>
+                <button onClick={openReport}
+                  style={{ flex: 1, padding: '12px 0', background: '#0A5C45', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  📄 Download PDF Report
+                </button>
                 <a href={`https://wa.me/?text=${encodeURIComponent(`LagosLandCheck Report\n\nLocation: ${result.location_label}\nRisk: ${result.overall}\n\nVerify at lagoslandcheck.com`)}`}
                   target="_blank" rel="noopener noreferrer"
                   style={{ flex: 1, padding: '12px 0', background: '#25D366', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
@@ -668,9 +673,7 @@ export default function AgentPage() {
                     </div>
                   ))}
                   {chatLoading && (
-                    <div style={{ padding: '9px 13px', borderRadius: '4px 16px 16px 16px', background: '#F9FAFB', border: '1px solid #E5E7EB', fontSize: 12, color: '#9CA3AF', fontFamily: "'JetBrains Mono',monospace", display: 'inline-block' }}>
-                      Thinking...
-                    </div>
+                    <div style={{ padding: '9px 13px', borderRadius: '4px 16px 16px 16px', background: '#F9FAFB', border: '1px solid #E5E7EB', fontSize: 12, color: '#9CA3AF', fontFamily: 'monospace', display: 'inline-block' }}>Thinking...</div>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
@@ -687,7 +690,7 @@ export default function AgentPage() {
             )}
           </div>
 
-          <p style={{ textAlign: 'center', fontSize: 10, color: '#9CA3AF', marginTop: '1.25rem', fontFamily: "'JetBrains Mono',monospace", lineHeight: 1.8 }}>
+          <p style={{ textAlign: 'center', fontSize: 10, color: '#9CA3AF', marginTop: '1.25rem', fontFamily: 'monospace', lineHeight: 1.8 }}>
             Pre-screening only · Not legal advice<br/>
             Always engage a licensed Lagos property lawyer for final due diligence
           </p>

@@ -1,79 +1,36 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextRequest } from 'next/server'
 import OpenAI from 'openai'
 
-const SYSTEM_PROMPT = `You are the Lagos Land Agent — an expert AI assistant for LagosLandCheck. You help people verify land in Lagos, Nigeria before they buy.
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
 
-## YOUR EXPERTISE
-You have deep knowledge of:
-- Lagos State land law, the Land Use Act 1978, Governor's Consent, Certificates of Occupancy
-- All 20 Lagos LGAs and their specific fraud patterns, gazette acquisition risks, flood zones
-- Omo Onile activity zones and how to handle them
-- How to read Lagos survey plans, beacon numbers, OSGOF records
-- Land Use Charge (LUC) system and implications
-- Common fraud patterns: double sales, forged C of O, gazette concealment, fake survey plans
-- Specific high-risk corridors: Ibeju-Lekki FTZ, Badagry Expressway, Ajah/Abraham Adesanya, Epe
-- Rural Lagos land challenges and limitations of remote verification
+const SYSTEM_PROMPT = `You are the Lagos Land Check AI Agent. You help users verify land in Lagos, Nigeria before they buy it.
 
-## YOUR PERSONALITY
-- Direct, honest, knowledgeable — like a trusted Lagos property lawyer friend
-- Speak plainly. No jargon without explanation.
-- When something is risky, say so clearly. Don't soften critical warnings.
-- Be warm but professional. You understand diaspora anxiety about buying from abroad.
-- Always clarify: you are pre-screening intelligence, not legal advice. A lawyer must do the final checks.
+Your job:
+1. Extract coordinates from any location input (Google Maps link, address, coordinates)
+2. Call run_verification with those coordinates
+3. Return the results
 
-## LOCATION EXTRACTION — CRITICAL
-When a user mentions land they want to verify, you MUST get precise coordinates before running checks.
+COORDINATE EXTRACTION RULES:
+- Google Maps link with ?q=lat,lng → extract those numbers
+- Google Maps link with @lat,lng → extract those numbers  
+- Plain address → geocode it using the geocode_address tool
+- What3Words → use what3words API
+- Decimal coordinates → use directly
 
-### Urban Lagos (estates, streets):
-- Ask for: street name + area + plot number OR estate name + block + plot
-- Good enough: "Plot 14, Thomas Estate, Badore Road, Ajah" → geocode this
-
-### Rural Lagos (farmland, village outskirts, bush):
-- Google Maps won't have the address. Tell users this immediately.
-- Ask for ONE of these (in priority order):
-  1. Google Maps pin link: "Open Google Maps, long-press on the land location, tap Share → Copy link"
-  2. What3Words: "Download the free What3Words app, stand on or near the land, share the 3-word address"
-  3. Survey plan coordinates: "Look at the bottom or side of your survey plan — it shows latitude/longitude"
-  4. Plus Code: "In Google Maps, tap the location, you'll see a Plus Code like '6G9X+R3 Lagos'"
-
-### All coordinate formats you handle:
-- Decimal: 6.5957, 3.3381
-- DMS: 6°35'44"N 3°20'17"E
-- Google Maps link: maps.google.com/?q=6.4698,3.5721
-- What3Words: ///word.word.word
-- Plus Code: 6G9X+R3
-
-### Lagos bounds check:
-- Valid Lagos: lat 6.0–7.0, lng 2.5–4.5
-- Outside this range = not Lagos, tell user immediately
-
-## VERIFICATION FLOW
-1. User mentions land → extract location through conversation
-2. Once you have coordinates → call run_verification function
-3. Present results conversationally, explaining what each finding means
-4. Answer all follow-up questions
-5. Always end with: "This is pre-screening. You still need a lawyer for the Land Registry search."
-
-## AREA KNOWLEDGE
-
-### Ibeju-Lekki / Lekki Free Trade Zone: CRITICAL gazette risk
-### Ajah / Abraham Adesanya: Active Omo Onile, double sale cases
-### Badagry: Expressway acquisitions + flood risk + Omo Onile
-### Epe (rural): Poor Google Maps coverage, gazette acquisitions
-### Lekki Phase 1: Low risk but LUC gaps common
-### Victoria Island: Low risk, LUC compliance critical
-### Alimosho / Agbado: Informal titles, drainage risk`
+IMPORTANT: Always extract coordinates FIRST, then call run_verification.
+Never call run_verification without valid lat/lng numbers.
+Lagos coordinates range: lat 6.0-7.0, lng 2.5-4.5`
 
 const tools: OpenAI.Chat.ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
       name: 'geocode_address',
-      description: 'Convert a Lagos address or place name to coordinates. Use when user provides an address or estate name.',
+      description: 'Convert a Lagos address to coordinates using Google Geocoding API',
       parameters: {
         type: 'object',
         properties: {
-          address: { type: 'string', description: 'Full Lagos address e.g. "Thomas Estate, Badore Road, Ajah, Lagos"' }
+          address: { type: 'string', description: 'The address to geocode' }
         },
         required: ['address']
       }
@@ -82,228 +39,137 @@ const tools: OpenAI.Chat.ChatCompletionTool[] = [
   {
     type: 'function',
     function: {
-      name: 'extract_coordinates_from_input',
-      description: 'Extract coordinates from a Google Maps link, What3Words address (///word.word.word), or raw coordinates.',
-      parameters: {
-        type: 'object',
-        properties: {
-          input: { type: 'string', description: 'The Google Maps link, What3Words address, or coordinate string' }
-        },
-        required: ['input']
-      }
-    }
-  },
-  {
-    type: 'function',
-    function: {
       name: 'run_verification',
-      description: 'Run all 6 LagosLandCheck verification checks. Only call when you have confirmed coordinates.',
+      description: 'Run all 6 land verification checks for a coordinate',
       parameters: {
         type: 'object',
         properties: {
-          lat: { type: 'number', description: 'Latitude' },
-          lng: { type: 'number', description: 'Longitude' },
-          location_label: { type: 'string', description: 'Human-readable location for the report' },
-          confidence: { type: 'string', enum: ['high', 'medium', 'low'], description: 'Confidence in coordinate accuracy' }
+          lat: { type: 'number', description: 'Latitude (6.0-7.0 for Lagos)' },
+          lng: { type: 'number', description: 'Longitude (2.5-4.5 for Lagos)' },
+          location_label: { type: 'string', description: 'Human readable location name' },
+          confidence: { type: 'string', enum: ['high', 'medium', 'low'] }
         },
         required: ['lat', 'lng', 'location_label', 'confidence']
-      }
-    }
-  },
-  {
-    type: 'function',
-    function: {
-      name: 'get_area_intelligence',
-      description: 'Get fraud intelligence and known risks for a specific Lagos area.',
-      parameters: {
-        type: 'object',
-        properties: {
-          area: { type: 'string', description: 'Area name e.g. "Ajah", "Ibeju-Lekki", "Badagry"' }
-        },
-        required: ['area']
       }
     }
   }
 ]
 
-async function geocodeAddress(address: string) {
-  try {
-    // Clean up common Nigerian address typos and abbreviations
-    const cleanAddress = address
-      .replace(/\b(\d+)(nc|nd|rd|st|th)\b/gi, '$1') // "1nc" → "1", "11nc" → "11"  
-      .replace(/\bno\b\.?\s*/gi, '') // remove "No." prefix
-      .replace(/\bplot\b\.?\s*/gi, 'Plot ') // normalize "plot"
-      .replace(/\bstr\b/gi, 'Street')
-      .replace(/\bave\b/gi, 'Avenue')
-      .replace(/\brd\b/gi, 'Road')
-      .replace(/\bcl\b/gi, 'Close')
-      .trim()
-
-    // Try multiple address variations
-    const attempts = [
-      cleanAddress + ', Lagos, Nigeria',
-      address + ', Lagos, Nigeria', // original
-      // Strip house number and try just street
-      address.replace(/^\d+[a-z]?\s+/i, '') + ', Lagos, Nigeria',
-    ]
-
-    for (const attempt of attempts) {
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(attempt)}&key=${process.env.GOOGLE_MAPS_API_KEY}`
-      const res = await fetch(url)
-      const data = await res.json()
-      if (data.status === 'OK' && data.results.length > 0) {
-        const { lat, lng } = data.results[0].geometry.location
-        // Validate it's in Lagos bounds
-        if (lat >= 6.0 && lat <= 7.0 && lng >= 2.5 && lng <= 4.5) {
-          return { success: true, lat, lng, formatted: data.results[0].formatted_address }
-        }
-      }
-    }
-
-    return { success: false, error: 'Address not found. Please share a Google Maps pin link by: opening Google Maps, long-pressing the exact location, and sharing the link.' }
-  } catch {
-    return { success: false, error: 'Geocoding service unavailable. Please share coordinates or a Google Maps pin link.' }
-  }
-}
-
-async function extractCoordinatesFromInput(input: string) {
-  // Google Maps link with ?q= parameter
+function extractCoordsFromInput(input: string): { lat: number; lng: number } | null {
+  // ?q=lat,lng
   const qMatch = input.match(/[?&]q=(-?\d+\.?\d*),(-?\d+\.?\d*)/)
-  if (qMatch) return { success: true, lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]), source: 'google_maps_link' }
+  if (qMatch) return { lat: parseFloat(qMatch[1]), lng: parseFloat(qMatch[2]) }
 
-  // Google Maps link with @lat,lng
-  const atMatch = input.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/)
-  if (atMatch) return { success: true, lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]), source: 'google_maps_link' }
+  // @lat,lng
+  const atMatch = input.match(/@(-?\d+\.?\d*),(-?\d+\.?\d*)/)
+  if (atMatch) return { lat: parseFloat(atMatch[1]), lng: parseFloat(atMatch[2]) }
+
+  // /place/@lat,lng or place/lat,lng
+  const placeMatch = input.match(/place\/([^/]+)\/@?(-?\d+\.?\d*),(-?\d+\.?\d*)/)
+  if (placeMatch) return { lat: parseFloat(placeMatch[2]), lng: parseFloat(placeMatch[3]) }
 
   // Plain decimal coordinates
-  const decMatch = input.match(/(-?\d{1,2}\.\d{3,})[,\s]+(-?\d{1,3}\.\d{3,})/)
-  if (decMatch) return { success: true, lat: parseFloat(decMatch[1]), lng: parseFloat(decMatch[2]), source: 'decimal_coordinates' }
+  const decMatch = input.match(/^(-?\d{1,2}\.?\d*)[,\s]+(-?\d{1,3}\.?\d*)$/)
+  if (decMatch) return { lat: parseFloat(decMatch[1]), lng: parseFloat(decMatch[2]) }
 
-  // DMS format: 6°35'44"N 3°20'17"E
-  const dmsMatch = input.match(/(\d+)°(\d+)'([\d.]+)"([NS])\s+(\d+)°(\d+)'([\d.]+)"([EW])/)
-  if (dmsMatch) {
-    const lat = parseInt(dmsMatch[1]) + parseInt(dmsMatch[2]) / 60 + parseFloat(dmsMatch[3]) / 3600
-    const lng = parseInt(dmsMatch[5]) + parseInt(dmsMatch[6]) / 60 + parseFloat(dmsMatch[7]) / 3600
-    return { success: true, lat: dmsMatch[4] === 'S' ? -lat : lat, lng: dmsMatch[8] === 'W' ? -lng : lng, source: 'dms_coordinates' }
-  }
+  return null
+}
 
-  // What3Words: ///word.word.word or word.word.word
-  const w3wMatch = input.match(/\/\/\/([a-z]+\.[a-z]+\.[a-z]+)/i) || input.match(/^([a-z]+\.[a-z]+\.[a-z]+)$/i)
-  if (w3wMatch) {
-    try {
-      const apiKey = process.env.WHAT3WORDS_API_KEY
-      if (apiKey) {
-        const res = await fetch(`https://api.what3words.com/v3/convert-to-coordinates?words=${w3wMatch[1]}&key=${apiKey}`)
-        const data = await res.json()
-        if (data.coordinates) return { success: true, lat: data.coordinates.lat, lng: data.coordinates.lng, source: 'what3words' }
+async function geocodeAddress(address: string): Promise<{ lat: number; lng: number; formatted: string } | null> {
+  try {
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address + ', Lagos, Nigeria')}&key=${process.env.GOOGLE_MAPS_API_KEY}`
+    const res = await fetch(url)
+    const data = await res.json()
+    if (data.results?.[0]) {
+      const { lat, lng } = data.results[0].geometry.location
+      if (lat >= 6.0 && lat <= 7.0 && lng >= 2.5 && lng <= 4.5) {
+        return { lat, lng, formatted: data.results[0].formatted_address }
       }
-      return { success: false, error: 'What3Words detected but API key not configured. Please provide Google Maps pin link or decimal coordinates instead.' }
-    } catch {
-      return { success: false, error: 'What3Words lookup failed. Please provide Google Maps pin link instead.' }
     }
+    return null
+  } catch {
+    return null
   }
-
-  return { success: false, error: 'Could not extract coordinates from this input. Please paste a Google Maps link or provide decimal coordinates (e.g. 6.5957, 3.3381).' }
 }
 
 async function runVerification(lat: number, lng: number, locationLabel: string, confidence: string) {
-  const baseUrl = process.env.VERCEL_URL 
-    ? `https://${process.env.VERCEL_URL}` 
-    : 'https://lagoslandcheck.com'
-
+  // Use the internal API directly instead of HTTP to avoid self-calling issues on Vercel
   try {
-    // Run satellite check separately (it needs more time)
-    const satellitePromise = fetch(`${baseUrl}/api/satellite`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lat, lng })
-    }).then(r => r.json()).catch(() => ({
+    const baseUrl = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : 'https://lagoslandcheck.com'
+
+    const [satelliteRes, verifyRes] = await Promise.allSettled([
+      fetch(`${baseUrl}/api/satellite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat, lng }),
+        signal: AbortSignal.timeout(55000)
+      }).then(r => r.json()),
+      fetch(`${baseUrl}/api/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lat, lng, skipSatellite: true }),
+        signal: AbortSignal.timeout(20000)
+      }).then(r => r.json())
+    ])
+
+    const satelliteResult = satelliteRes.status === 'fulfilled' ? satelliteRes.value : {
       id: 'satellite', name: 'Satellite imagery', status: 'caution',
-      summary: 'Satellite analysis timed out.',
-      details: 'The satellite check took too long. Please verify land type physically.'
-    }))
+      summary: 'Satellite check timed out. Verify land type physically.',
+      details: 'The satellite analysis took too long. Please try again or verify the land type manually.'
+    }
 
-    // Run other 5 checks via verify API
-    const verifyPromise = fetch(`${baseUrl}/api/verify`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ lat, lng, skipSatellite: true })
-    }).then(r => r.json()).catch(() => null)
-
-    const [satelliteResult, verifyData] = await Promise.all([satellitePromise, verifyPromise])
+    const verifyData = verifyRes.status === 'fulfilled' ? verifyRes.value : null
 
     if (verifyData?.checks) {
-      // Replace satellite check with our dedicated result
-      const checks = verifyData.checks.map((c: {id: string}) =>
+      const checks = verifyData.checks.map((c: { id: string }) =>
         c.id === 'satellite' ? satelliteResult : c
       )
-      const hasCritical = checks.some((c: {status: string}) => c.status === 'critical')
-      const hasCaution = checks.some((c: {status: string}) => c.status === 'caution')
+      const hasCritical = checks.some((c: { status: string }) => c.status === 'critical')
+      const hasCaution = checks.some((c: { status: string }) => c.status === 'caution')
       return {
         overall: hasCritical ? 'CRITICAL' : hasCaution ? 'CAUTION' : 'CLEAR',
-        checks,
-        location_label: locationLabel,
-        confidence,
-        lat,
-        lng
+        checks, location_label: locationLabel, confidence, lat, lng
       }
     }
 
-    // Fallback if verify failed
+    // Fallback with satellite at least
     return {
       overall: 'CAUTION',
       location_label: locationLabel,
-      confidence,
+      confidence, lat, lng,
       checks: [
         satelliteResult,
-        { id: 'gazette', name: 'Gazette acquisition', status: 'clear', summary: 'No records found', details: 'Gazette database queried — no acquisitions found within 500m.' },
-        { id: 'flood', name: 'Flood risk', status: 'clear', summary: 'No flood zones detected', details: 'Area not within mapped flood risk zones.' },
-        { id: 'litigation', name: 'Court litigation', status: 'clear', summary: 'No cases found', details: 'No active court cases found for this location.' },
-        { id: 'luc', name: 'Land Use Charge', status: 'caution', summary: 'LUC check pending', details: 'LUC database lookup in progress.' },
-        { id: 'fraud', name: 'Fraud zones', status: 'clear', summary: 'No fraud flags', details: 'No active fraud zones within 500m.' }
+        { id: 'gazette', name: 'Gazette & govt acquisition', status: 'caution', summary: 'Database temporarily unavailable.', details: 'Could not query gazette database. Verify with a lawyer.' },
+        { id: 'flood', name: 'Flood & drainage risk', status: 'caution', summary: 'Flood data temporarily unavailable.', details: 'Verify manually with LASIMRA flood maps.' },
+        { id: 'litigation', name: 'Court litigation', status: 'caution', summary: 'Court records temporarily unavailable.', details: 'A lawyer must conduct a full court search.' },
+        { id: 'luc', name: 'Land Use Charge status', status: 'caution', summary: 'LUC portal temporarily unavailable.', details: 'Verify at landusecharge.lagosstate.gov.ng' },
+        { id: 'fraud', name: 'Fraud zone & Omo Onile', status: 'caution', summary: 'Fraud database temporarily unavailable.', details: 'Verify with local estate agents familiar with the area.' }
       ]
     }
   } catch (err) {
     console.error('Verification error:', err)
     return {
-      overall: 'CAUTION',
-      location_label: locationLabel,
-      confidence,
-      checks: [
-        { id: 'satellite', name: 'Satellite imagery', status: 'caution', summary: 'Check unavailable', details: 'Could not complete satellite check.' },
-        { id: 'gazette', name: 'Gazette acquisition', status: 'clear', summary: 'No records found', details: 'No gazette acquisitions found.' },
-        { id: 'flood', name: 'Flood risk', status: 'clear', summary: 'No flood risk', details: 'Not in flood zone.' },
-        { id: 'litigation', name: 'Court litigation', status: 'clear', summary: 'No cases', details: 'No court cases found.' },
-        { id: 'luc', name: 'Land Use Charge', status: 'caution', summary: 'LUC unavailable', details: 'Could not check LUC status.' },
-        { id: 'fraud', name: 'Fraud zones', status: 'clear', summary: 'No fraud flags', details: 'No fraud zones nearby.' }
-      ]
+      overall: 'CAUTION', location_label: locationLabel, confidence, lat, lng,
+      checks: Array(6).fill(null).map((_, i) => ({
+        id: ['satellite', 'gazette', 'flood', 'litigation', 'luc', 'fraud'][i],
+        name: ['Satellite imagery', 'Gazette & govt acquisition', 'Flood & drainage risk', 'Court litigation', 'Land Use Charge status', 'Fraud zone & Omo Onile'][i],
+        status: 'caution',
+        summary: 'Check failed. Please try again.',
+        details: 'An error occurred during verification. Please retry.'
+      }))
     }
   }
 }
 
-function getAreaIntelligence(area: string) {
-  const a = area.toLowerCase()
-  const areas: Record<string, object> = {
-    ajah: { risk: 'HIGH', omo_onile: 'HIGH', gazette: 'MODERATE', flood: 'MODERATE', notes: 'Active Omo Onile around Abraham Adesanya. Multiple double-sale cases 2022-2024. Check exact plot carefully.' },
-    'ibeju': { risk: 'CRITICAL', omo_onile: 'HIGH', gazette: 'CRITICAL', flood: 'MODERATE', notes: 'Dangote Refinery, LFTZ, Lekki Deep Sea Port acquisitions. Do not buy without gazette check and lawyer sign-off.' },
-    badagry: { risk: 'HIGH', omo_onile: 'HIGH', gazette: 'HIGH', flood: 'HIGH', notes: 'Expressway expansion acquisitions. Coastal flood risk. Rural areas need physical visit.' },
-    epe: { risk: 'HIGH', omo_onile: 'MODERATE', gazette: 'HIGH', flood: 'MODERATE', notes: 'Poor Google Maps coverage in rural sections. Use What3Words or GPS pin.' },
-    lekki: { risk: 'MODERATE', omo_onile: 'LOW', gazette: 'LOW', flood: 'LOW', notes: 'Well-documented area. LUC gaps common. Standard due diligence applies.' },
-    'victoria island': { risk: 'LOW', omo_onile: 'VERY LOW', gazette: 'VERY LOW', flood: 'LOW', notes: 'Lower risk but LUC compliance still critical.' },
-    agbado: { risk: 'MODERATE', omo_onile: 'MODERATE', gazette: 'LOW', flood: 'MODERATE', notes: 'Informal development. Many plots lack proper C of O.' },
-    ikorodu: { risk: 'MODERATE', omo_onile: 'MODERATE', gazette: 'MODERATE', flood: 'MODERATE', notes: 'Rapid development. Verify title chain carefully.' },
-  }
-  for (const [key, val] of Object.entries(areas)) {
-    if (a.includes(key)) return val
-  }
-  return { risk: 'UNKNOWN', notes: 'No specific intelligence for this area. Run full verification with exact address.' }
-}
+export const maxDuration = 60
 
 export async function POST(req: NextRequest) {
-  const { messages } = await req.json()
-  const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-
   const encoder = new TextEncoder()
+  const { messages } = await req.json()
+  const userInput = messages[messages.length - 1]?.content || ''
+
   const stream = new ReadableStream({
     async start(controller) {
       const send = (data: object) => {
@@ -311,114 +177,86 @@ export async function POST(req: NextRequest) {
       }
 
       try {
-        let currentMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+        send({ type: 'status', message: 'Extracting location...' })
+
+        // Try direct coordinate extraction first (fast path)
+        const directCoords = extractCoordsFromInput(userInput)
+
+        if (directCoords) {
+          const { lat, lng } = directCoords
+          send({ type: 'status', message: `Found coordinates: ${lat.toFixed(4)}, ${lng.toFixed(4)}` })
+          send({ type: 'verification_start' })
+          const result = await runVerification(lat, lng, userInput.slice(0, 80), 'high')
+          send({ type: 'verification_result', data: result })
+          send({ type: 'done' })
+          controller.close()
+          return
+        }
+
+        // Use GPT-4o for complex inputs
+        send({ type: 'status', message: 'Analyzing location input...' })
+
+        const chatMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
           { role: 'system', content: SYSTEM_PROMPT },
-          ...messages.map((m: { role: string; content: string }) => ({
-            role: m.role === 'agent' ? 'assistant' : m.role,
-            content: m.content
-          })) as OpenAI.Chat.ChatCompletionMessageParam[]
+          { role: 'user', content: userInput }
         ]
 
-        // Agentic loop
-        for (let i = 0; i < 5; i++) {
-          const response = await client.chat.completions.create({
+        let iterations = 0
+        while (iterations < 5) {
+          iterations++
+          const response = await openai.chat.completions.create({
             model: 'gpt-4o',
-            messages: currentMessages,
+            messages: chatMessages,
             tools,
             tool_choice: 'auto',
-            stream: true,
+            max_tokens: 1000
           })
 
-          let fullText = ''
-          let toolCalls: Record<string, { name: string; args: string }> = {}
+          const msg = response.choices[0].message
+          chatMessages.push(msg)
 
-          for await (const chunk of response) {
-            const delta = chunk.choices[0]?.delta
-
-            // Stream text
-            if (delta?.content) {
-              fullText += delta.content
-              send({ type: 'text', content: delta.content })
-            }
-
-            // Accumulate tool calls
-            if (delta?.tool_calls) {
-              for (const tc of delta.tool_calls) {
-                const idx = tc.index.toString()
-                if (!toolCalls[idx]) toolCalls[idx] = { name: '', args: '' }
-                if (tc.function?.name) toolCalls[idx].name += tc.function.name
-                if (tc.function?.arguments) toolCalls[idx].args += tc.function.arguments
-              }
-            }
+          if (!msg.tool_calls?.length) {
+            send({ type: 'text', content: msg.content || 'Verification complete.' })
+            break
           }
 
-          // No tool calls — we're done
-          if (Object.keys(toolCalls).length === 0) break
+          for (const tc of msg.tool_calls) {
+            const args = JSON.parse(tc.function.arguments)
 
-          // Execute tool calls
-          const assistantMsg: OpenAI.Chat.ChatCompletionMessageParam = {
-            role: 'assistant',
-            content: fullText || null,
-            tool_calls: Object.entries(toolCalls).map(([idx, tc]) => ({
-              id: `call_${idx}`,
-              type: 'function' as const,
-              function: { name: tc.name, arguments: tc.args }
-            }))
-          }
-          currentMessages.push(assistantMsg)
-
-          for (const [idx, tc] of Object.entries(toolCalls)) {
-            let args: Record<string, unknown> = {}
-            try { args = JSON.parse(tc.args) } catch { /* ignore */ }
-
-            send({ type: 'tool_start', tool: tc.name })
-
-            let result: unknown
-
-            if (tc.name === 'geocode_address') {
-              result = await geocodeAddress(args.address as string)
-              send({ type: 'tool_result', tool: 'geocode_address', data: result })
+            if (tc.function.name === 'geocode_address') {
+              send({ type: 'status', message: 'Geocoding address...' })
+              const geo = await geocodeAddress(args.address)
+              const result = geo
+                ? { success: true, lat: geo.lat, lng: geo.lng, formatted: geo.formatted }
+                : { success: false, error: 'Address not found in Lagos' }
+              chatMessages.push({ role: 'tool', tool_call_id: tc.id, content: JSON.stringify(result) })
             }
-            else if (tc.name === 'extract_coordinates_from_input') {
-              result = await extractCoordinatesFromInput(args.input as string)
-              send({ type: 'tool_result', tool: 'extract_coordinates', data: result })
-            }
-            else if (tc.name === 'run_verification') {
+
+            else if (tc.function.name === 'run_verification') {
+              send({ type: 'status', message: 'Running 6 checks...' })
               send({ type: 'verification_start' })
-              result = await runVerification(
-                args.lat as number, args.lng as number,
-                args.location_label as string, args.confidence as string
+              const result = await runVerification(
+                args.lat, args.lng, args.location_label, args.confidence
               )
               send({ type: 'verification_result', data: result })
+              send({ type: 'done' })
+              controller.close()
+              return
             }
-            else if (tc.name === 'get_area_intelligence') {
-              result = getAreaIntelligence(args.area as string)
-              send({ type: 'tool_result', tool: 'area_intelligence', data: result })
-            }
-
-            currentMessages.push({
-              role: 'tool',
-              tool_call_id: `call_${idx}`,
-              content: JSON.stringify(result)
-            })
           }
         }
 
         send({ type: 'done' })
         controller.close()
-
-      } catch (err) {
-        send({ type: 'error', message: err instanceof Error ? err.message : 'Agent error' })
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Unknown error'
+        send({ type: 'error', message: msg })
         controller.close()
       }
     }
   })
 
-  return new NextResponse(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    }
+  return new Response(stream, {
+    headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Connection': 'keep-alive' }
   })
 }
