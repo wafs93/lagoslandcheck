@@ -1,4 +1,4 @@
-export type CheckStatus = 'clear' | 'caution' | 'critical' | 'error'
+export type CheckStatus = 'clear' | 'caution' | 'critical' | 'error' | 'queued' | 'running'
 export type OverallVerdict = 'CLEAR' | 'CAUTION' | 'CRITICAL'
 
 export interface CheckResult {

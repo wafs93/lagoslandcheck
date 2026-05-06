@@ -17,6 +17,7 @@ interface VerificationResult {
   checks: CheckResult[]
   lat?: number
   lng?: number
+  reportId?: string
 }
 
 type Stage = 'input' | 'processing' | 'results'
@@ -46,6 +47,14 @@ const STATUS_CONFIG = {
 
 const PAYSTACK_KEY = 'pk_test_17b32b318559c98e18d9413827fe51dcc812d61e'
 const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
+
+// First sentence of details, used as teaser on locked cards
+function teaser(details: string, status: string): string {
+  if (!details) return status === 'clear' ? 'No issues detected on this check.' : 'Findings available — unlock to read.'
+  const firstSentence = details.split(/[.!?]/)[0]
+  if (firstSentence.length > 110) return firstSentence.slice(0, 107) + '...'
+  return firstSentence + '.'
+}
 
 function StreetViewTab({ url, lat, lng }: { url: string | null; lat?: number; lng?: number }) {
   const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading')
@@ -152,7 +161,6 @@ export default function AgentPage() {
     setProcessingStep(0)
     setProcessingChecks([])
 
-    // Animate processing steps
     const steps = ['locate', ...CHECKS_CONFIG.map(c => c.id)]
     const animate = async () => {
       for (let i = 0; i < steps.length; i++) {
@@ -189,7 +197,6 @@ export default function AgentPage() {
       }
 
       if (verificationData) {
-        // Store in sessionStorage for report page
         sessionStorage.setItem('llc_result', JSON.stringify(verificationData))
         setResult(verificationData)
         setActiveTab('satellite')
@@ -239,7 +246,6 @@ export default function AgentPage() {
           callback: (response: { reference: string }) => {
             setPaid(true)
             setPayLoading(false)
-            // Store payment info
             sessionStorage.setItem('llc_ref', response.reference)
             sessionStorage.setItem('llc_email', email)
             if (result) sessionStorage.setItem('llc_result', JSON.stringify(result))
@@ -304,6 +310,9 @@ export default function AgentPage() {
 
   const rc = result ? RISK_CONFIG[result.overall] : null
   const hasBuilding = result?.checks.find(c => c.id === 'satellite')?.summary?.toLowerCase().includes('building')
+
+  // Count of cautions/criticals — used in the unlock CTA copy
+  const cautionCount = result?.checks.filter(c => c.status === 'caution' || c.status === 'critical').length || 0
 
   return (
     <div style={{ fontFamily: "'Syne',sans-serif", background: '#F8FAF9', minHeight: '100vh' }}>
@@ -537,12 +546,12 @@ export default function AgentPage() {
             </div>
           )}
 
-          {/* 6 Checks */}
+          {/* 6 Checks — NEW DESIGN: locked cards show teaser + lock icon, NO per-card price */}
           <div className="appear" style={{ marginBottom: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
               <p style={{ fontSize: 10, fontFamily: 'monospace', color: '#6B7280', letterSpacing: '1.5px' }}>6 RISK CHECKS</p>
               <span style={{ fontSize: 10, fontFamily: 'monospace', background: paid ? '#D1FAE5' : '#FEF3C7', color: paid ? '#065F46' : '#92400E', padding: '2px 8px', borderRadius: 4 }}>
-                {paid ? '✓ UNLOCKED' : 'FREE PREVIEW'}
+                {paid ? '✓ FULL ACCESS' : 'PREVIEW MODE'}
               </span>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -563,7 +572,14 @@ export default function AgentPage() {
                           </div>
                           <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>{check.summary}</p>
                         </div>
-                        <div style={{ width: 8, height: 8, borderRadius: '50%', background: sc.color, flexShrink: 0 }} />
+                        {!paid ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#9CA3AF', fontSize: 11, fontFamily: 'monospace', flexShrink: 0 }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                            <span>LOCKED</span>
+                          </div>
+                        ) : (
+                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: sc.color, flexShrink: 0 }} />
+                        )}
                       </div>
                       {isOpen && paid && check.details && (
                         <div style={{ marginTop: 10, paddingTop: 10, borderTop: '0.5px solid #F3F4F6' }}>
@@ -571,11 +587,11 @@ export default function AgentPage() {
                         </div>
                       )}
                       {!paid && check.details && (
-                        <div style={{ marginTop: 8, position: 'relative' }}>
-                          <p style={{ fontSize: 12, color: '#374151', lineHeight: 1.75, filter: 'blur(4px)', userSelect: 'none', pointerEvents: 'none' }}>{check.details}</p>
-                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ fontSize: 10, fontFamily: 'monospace', background: '#0A5C45', color: '#fff', padding: '3px 12px', borderRadius: 10 }}>🔒 Unlock — ₦2,500</span>
-                          </div>
+                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '0.5px dashed #E5E7EB' }}>
+                          <p style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.6, fontStyle: 'italic' }}>
+                            <span style={{ color: '#6B7280', fontWeight: 600, fontStyle: 'normal' }}>Preview: </span>
+                            {teaser(check.details, check.status)}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -585,30 +601,64 @@ export default function AgentPage() {
             </div>
           </div>
 
-          {/* Paywall */}
+          {/* SINGLE PAYWALL CTA — one price, one button */}
           {!paid && (
-            <div className="appear card" style={{ background: 'linear-gradient(135deg,#0A5C45,#07382C)', border: 'none', padding: '1.5rem', marginBottom: '1rem' }}>
-              <p style={{ fontSize: 10, fontFamily: 'monospace', color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', marginBottom: 6 }}>UNLOCK FULL REPORT</p>
-              <h3 style={{ fontFamily: "'Lora',serif", fontSize: 20, color: '#fff', fontWeight: 600, marginBottom: 8 }}>Get the complete verification</h3>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, marginBottom: '1.25rem' }}>
-                {['📋 Full details for all 6 checks', '🛰️ Satellite imagery analysis', '📍 Exact gazette distances', '⚖️ Court case details', '📄 PDF certificate', '✅ Share with lawyer'].map(f => (
-                  <div key={f} style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)' }}>{f}</div>
+            <div className="appear card" style={{ background: 'linear-gradient(135deg,#0A5C45,#07382C)', border: 'none', padding: '1.5rem', marginBottom: '1rem', position: 'relative', overflow: 'hidden' }}>
+              {/* Gold accent stripe */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg,#CFAF6E 0%,#CFAF6E 30%,transparent 30%,transparent 70%,#CFAF6E 70%)' }} />
+
+              <p style={{ fontSize: 10, fontFamily: 'monospace', color: '#CFAF6E', letterSpacing: '2px', marginBottom: 8, fontWeight: 600 }}>UNLOCK FULL REPORT</p>
+              <h3 style={{ fontFamily: "'Lora',serif", fontSize: 22, color: '#fff', fontWeight: 600, marginBottom: 6, lineHeight: 1.2 }}>
+                Unlock all 6 detailed findings
+              </h3>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', marginBottom: 16, lineHeight: 1.5 }}>
+                {cautionCount > 0
+                  ? `${cautionCount} ${cautionCount === 1 ? 'check has' : 'checks have'} flagged concerns. Read the full evidence, gazette references, and lawyer-ready details.`
+                  : 'Read the full evidence, distance measurements, and lawyer-ready breakdown for each check.'}
+              </p>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: '1.25rem' }}>
+                {[
+                  { i: '📋', t: 'Full details on all 6 checks' },
+                  { i: '🛰️', t: 'Satellite analysis breakdown' },
+                  { i: '📍', t: 'Exact gazette distances' },
+                  { i: '⚖️', t: 'Court case references' },
+                  { i: '📄', t: 'Branded PDF certificate' },
+                  { i: '💬', t: 'Share via WhatsApp / email' },
+                ].map(f => (
+                  <div key={f.t} style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 12, color: 'rgba(255,255,255,0.85)' }}>
+                    <span style={{ fontSize: 13 }}>{f.i}</span>
+                    <span>{f.t}</span>
+                  </div>
                 ))}
               </div>
+
+              {/* Price row */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'rgba(0,0,0,0.25)', borderRadius: 10, marginBottom: 12, border: '1px solid rgba(207,175,110,0.25)' }}>
+                <div>
+                  <div style={{ fontSize: 10, fontFamily: 'monospace', color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', marginBottom: 2 }}>ONE-TIME · NO SUBSCRIPTION</div>
+                  <div style={{ fontFamily: "'Lora',serif", fontSize: 24, fontWeight: 700, color: '#fff', lineHeight: 1 }}>
+                    ₦2,500
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 400, marginLeft: 8 }}>for the complete report</span>
+                  </div>
+                </div>
+              </div>
+
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && initPaystack()}
-                placeholder="your@email.com"
-                style={{ width: '100%', padding: '11px 14px', borderRadius: 10, border: `1.5px solid ${email && !isValidEmail(email) ? 'rgba(239,68,68,0.6)' : 'rgba(255,255,255,0.25)'}`, background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 14, fontFamily: "'Syne',sans-serif", marginBottom: 4 }} />
+                placeholder="your@email.com — receipt + report sent here"
+                style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${email && !isValidEmail(email) ? 'rgba(239,68,68,0.6)' : 'rgba(255,255,255,0.25)'}`, background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 14, fontFamily: "'Syne',sans-serif", marginBottom: 4 }} />
               {email && !isValidEmail(email) && (
                 <p style={{ fontSize: 11, color: 'rgba(239,68,68,0.8)', marginBottom: 6, fontFamily: 'monospace' }}>Please enter a valid email address</p>
               )}
               <div style={{ marginBottom: isValidEmail(email) ? 10 : 0 }} />
+
               <button onClick={initPaystack} disabled={payLoading || !isValidEmail(email)}
-                style={{ width: '100%', padding: '14px 0', background: isValidEmail(email) ? 'linear-gradient(135deg,#CFAF6E,#B8942A)' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 11, fontSize: 15, fontWeight: 700, color: '#fff', cursor: isValidEmail(email) ? 'pointer' : 'not-allowed', fontFamily: "'Syne',sans-serif" }}>
+                style={{ width: '100%', padding: '15px 0', background: isValidEmail(email) ? 'linear-gradient(135deg,#CFAF6E,#B8942A)' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 11, fontSize: 15, fontWeight: 700, color: '#fff', cursor: isValidEmail(email) ? 'pointer' : 'not-allowed', fontFamily: "'Syne',sans-serif", boxShadow: isValidEmail(email) ? '0 4px 12px rgba(207,175,110,0.3)' : 'none' }}>
                 {payLoading ? '⏳ Opening payment...' : '🔓 Unlock Full Report — ₦2,500'}
               </button>
-              <p style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 8, fontFamily: 'monospace' }}>
-                Secure via Paystack · Card, bank transfer, USSD
+              <p style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 10, fontFamily: 'monospace' }}>
+                Secure via Paystack · Card · Bank transfer · USSD
               </p>
             </div>
           )}
