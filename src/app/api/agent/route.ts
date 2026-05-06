@@ -207,7 +207,9 @@ async function extractCoordinatesFromInput(input: string) {
 }
 
 async function runVerification(lat: number, lng: number, locationLabel: string, confidence: string) {
-  const baseUrl = 'https://lagoslandcheck.com'
+  const baseUrl = process.env.VERCEL_URL 
+    ? `https://${process.env.VERCEL_URL}` 
+    : 'https://lagoslandcheck.com'
 
   try {
     // Run satellite check separately (it needs more time)
