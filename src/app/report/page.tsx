@@ -26,7 +26,7 @@ const statusConfig = {
   running:  { color: '#60A5FA', bg: '#EFF6FF', badge: '#DBEAFE', text: '#1D4ED8', label: 'CHECKING' },
 }
 
-const PAYSTACK_KEY = 'pk_test_17b32b318559c98e18d9413827fe51dcc812d61e'
+const PAYSTACK_KEY = 'pk_live_24d75de9079f18d337d6f0d8910e39ee4cd3415a'
 const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
 const checkIcons: Record<string, string> = { satellite: '🛰️', gazette: '📜', flood: '🌊', litigation: '⚖️', luc: '🧾', fraud: '🚨' }
 
