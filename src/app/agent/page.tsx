@@ -45,7 +45,7 @@ const STATUS_CONFIG = {
   queued:   { color: '#D1D5DB', bg: '#F9FAFB', badge: '#F3F4F6', text: '#6B7280', label: 'QUEUED' },
 }
 
-const PAYSTACK_KEY = 'pk_live_24d75de9079f18d337d6f0d8910e39ee4cd3415a'
+const PAYSTACK_KEY = 'pk_test_17b32b318559c98e18d9413827fe51dcc812d61e'
 const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
 
 // First sentence of details, used as teaser on locked cards
