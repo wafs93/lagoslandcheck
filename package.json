@@ -16,7 +16,8 @@
     "next": "^16.2.4",
     "openai": "^4.47.1",
     "react": "^19",
-    "react-dom": "^19"
+    "react-dom": "^19",
+    "resend": "^6.12.3"
   },
   "devDependencies": {
     "@types/node": "^20",

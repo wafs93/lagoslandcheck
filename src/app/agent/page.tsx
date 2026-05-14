@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import Footer from '@/components/Footer'
 
 interface CheckResult {
   id: string
@@ -249,6 +250,24 @@ export default function AgentPage() {
             sessionStorage.setItem('llc_ref', response.reference)
             sessionStorage.setItem('llc_email', email)
             if (result) sessionStorage.setItem('llc_result', JSON.stringify(result))
+            // Fire-and-forget — email delivery is a bonus
+            if (result?.lat && result?.lng) {
+              const refNo = `LLC-${Date.now().toString(36).toUpperCase()}`
+              fetch('/api/send-report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  email,
+                  refNo,
+                  paymentRef: response.reference,
+                  lat: result.lat,
+                  lng: result.lng,
+                  locationLabel: result.location_label,
+                  overall: result.overall,
+                  checks: result.checks,
+                })
+              }).catch(err => console.error('[REPORT_EMAIL_FAIL]', err))
+            }
           },
           onClose: () => setPayLoading(false)
         })
@@ -672,7 +691,7 @@ export default function AgentPage() {
                 </div>
                 <div>
                   <div style={{ fontSize: 15, fontWeight: 700, color: '#065F46' }}>Payment successful!</div>
-                  <div style={{ fontSize: 12, color: '#059669' }}>Full report unlocked. Receipt sent to {email}</div>
+                  <div style={{ fontSize: 12, color: '#059669' }}>Full report unlocked. We've also sent a copy to <strong>{email}</strong></div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
@@ -746,6 +765,7 @@ export default function AgentPage() {
           </p>
         </div>
       )}
+      {stage === 'results' && <Footer />}
     </div>
   )
 }

@@ -3,6 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { buildPdfHtml } from '@/lib/pdf-template'
+import Footer from '@/components/Footer'
 
 interface Check {
   id: string
@@ -119,7 +120,26 @@ function ReportContent() {
         const h = (window as any).PaystackPop.setup({
           key: PAYSTACK_KEY, email, amount: 250000, currency: 'NGN',
           ref: `llc_report_${Date.now()}`,
-          callback: () => { setPaidState(true); setPayLoading(false) },
+          callback: (response: { reference: string }) => {
+            setPaidState(true)
+            setPayLoading(false)
+            // Fire-and-forget — email delivery is a bonus, not blocking
+            const refNo = `LLC-${Date.now().toString(36).toUpperCase()}`
+            fetch('/api/send-report', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email,
+                refNo,
+                paymentRef: response.reference,
+                lat: parseFloat(lat),
+                lng: parseFloat(lng),
+                locationLabel: locationLabel || `${lat}, ${lng}`,
+                overall,
+                checks,
+              })
+            }).catch(err => console.error('[REPORT_EMAIL_FAIL]', err))
+          },
           onClose: () => setPayLoading(false)
         })
         h.openIframe()
@@ -363,6 +383,7 @@ function ReportContent() {
           Always engage a licensed Lagos property lawyer for final due diligence
         </p>
       </div>
+      <Footer />
     </div>
   )
 }
