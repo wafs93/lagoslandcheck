@@ -523,14 +523,22 @@ export default function Home() {
             </div>
             <div>
               <p style={{fontSize:10,color:'rgba(255,255,255,.25)',fontFamily:"'JetBrains Mono',monospace",letterSpacing:'1px',marginBottom:12}}>PRODUCT</p>
-              {['How it works','Buyer\'s guide','Sample report','AI Agent','Pricing'].map(l=>(
-                <a key={l} href="#" style={{display:'block',fontSize:13,color:'rgba(255,255,255,.45)',textDecoration:'none',marginBottom:7}}>{l}</a>
+              {[
+                ['How it works','#how-it-works'],
+                ['AI Agent','/agent'],
+                ['Pricing','#pricing'],
+              ].map(([l,h])=>(
+                <a key={l} href={h} style={{display:'block',fontSize:13,color:'rgba(255,255,255,.45)',textDecoration:'none',marginBottom:7}}>{l}</a>
               ))}
             </div>
             <div>
               <p style={{fontSize:10,color:'rgba(255,255,255,.25)',fontFamily:"'JetBrains Mono',monospace",letterSpacing:'1px',marginBottom:12}}>LEGAL</p>
-              {['Disclaimer','Privacy policy','Terms of use','Contact'].map(l=>(
-                <a key={l} href="#" style={{display:'block',fontSize:13,color:'rgba(255,255,255,.45)',textDecoration:'none',marginBottom:7}}>{l}</a>
+              {[
+                ['Refund policy','/refund-policy'],
+                ['Contact','/contact'],
+                ['support@lagoslandcheck.com','mailto:support@lagoslandcheck.com'],
+              ].map(([l,h])=>(
+                <a key={l} href={h} style={{display:'block',fontSize:13,color:'rgba(255,255,255,.45)',textDecoration:'none',marginBottom:7}}>{l}</a>
               ))}
             </div>
           </div>
