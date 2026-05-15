@@ -534,6 +534,8 @@ export default function Home() {
             <div>
               <p style={{fontSize:10,color:'rgba(255,255,255,.25)',fontFamily:"'JetBrains Mono',monospace",letterSpacing:'1px',marginBottom:12}}>LEGAL</p>
               {[
+                ['Terms of service','/terms'],
+                ['Privacy policy','/privacy'],
                 ['Refund policy','/refund-policy'],
                 ['Contact','/contact'],
                 ['support@lagoslandcheck.com','mailto:support@lagoslandcheck.com'],
