@@ -27,7 +27,7 @@ const statusConfig = {
   running:  { color: '#60A5FA', bg: '#EFF6FF', badge: '#DBEAFE', text: '#1D4ED8', label: 'CHECKING' },
 }
 
-const PAYSTACK_KEY = 'pk_test_17b32b318559c98e18d9413827fe51dcc812d61e'
+const PAYSTACK_KEY = 'pk_live_24d75de9079f18d337d6f0d8910e39ee4cd3415a'
 const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
 const checkIcons: Record<string, string> = { satellite: '🛰️', gazette: '📜', flood: '🌊', litigation: '⚖️', luc: '🧾', fraud: '🚨' }
 
@@ -118,7 +118,7 @@ function ReportContent() {
     s.onload = () => {
       try {
         const h = (window as any).PaystackPop.setup({
-          key: PAYSTACK_KEY, email, amount: 250000, currency: 'NGN',
+          key: PAYSTACK_KEY, email, amount: 500000, currency: 'NGN',
           ref: `llc_report_${Date.now()}`,
           callback: (response: { reference: string }) => {
             setPaidState(true)
@@ -342,7 +342,7 @@ function ReportContent() {
               <div>
                 <div style={{ fontSize: 10, fontFamily: 'monospace', color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', marginBottom: 2 }}>ONE-TIME · NO SUBSCRIPTION</div>
                 <div style={{ fontFamily: "'Lora',serif", fontSize: 24, fontWeight: 700, color: '#fff', lineHeight: 1 }}>
-                  ₦2,500
+                  ₦5,000
                   <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 400, marginLeft: 8 }}>for the complete report</span>
                 </div>
               </div>
@@ -354,7 +354,7 @@ function ReportContent() {
               style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${email && !isValidEmail(email) ? 'rgba(239,68,68,0.6)' : 'rgba(255,255,255,0.25)'}`, background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 14, marginBottom: 10 }} />
             <button onClick={initPaystack} disabled={payLoading || !isValidEmail(email)}
               style={{ width: '100%', padding: '15px 0', background: isValidEmail(email) ? 'linear-gradient(135deg,#CFAF6E,#B8942A)' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 11, fontSize: 15, fontWeight: 700, color: '#fff', cursor: isValidEmail(email) ? 'pointer' : 'not-allowed', fontFamily: "'Syne',sans-serif", boxShadow: isValidEmail(email) ? '0 4px 12px rgba(207,175,110,0.3)' : 'none' }}>
-              {payLoading ? '⏳ Opening payment...' : '🔓 Unlock Full Report — ₦2,500'}
+              {payLoading ? '⏳ Opening payment...' : '🔓 Unlock Full Report — ₦5,000'}
             </button>
             <p style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 10, fontFamily: 'monospace' }}>Secure via Paystack · Card · Bank transfer · USSD</p>
           </div>

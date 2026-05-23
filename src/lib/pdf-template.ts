@@ -412,7 +412,7 @@ export function buildPdfHtml({ checks, overall, lat, lng, locationLabel, refNo }
         <div class="stat-label">FLAGGED</div>
       </div>
       <div class="stat">
-        <div class="stat-n">₦2,500</div>
+        <div class="stat-n">₦5,000</div>
         <div class="stat-label">REPORT COST</div>
       </div>
     </div>

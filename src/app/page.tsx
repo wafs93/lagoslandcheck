@@ -217,7 +217,7 @@ const VerificationMockup = () => {
             borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8,
           }}>
             <IconCheck size={14} color="#4ADE80" />
-            <span style={{ fontSize: 12, color: '#fff', fontWeight: 600, fontFamily: "'Inter',sans-serif" }}>Report ready · ₦2,500 to unlock</span>
+            <span style={{ fontSize: 12, color: '#fff', fontWeight: 600, fontFamily: "'Inter',sans-serif" }}>Report ready · ₦5,000 to unlock</span>
           </div>
         )}
       </div>
@@ -406,7 +406,7 @@ export default function Home() {
               {[
                 { n: '< 2 min', l: 'Verification time' },
                 { n: '6 checks', l: 'Data sources' },
-                { n: '₦2,500', l: 'Full report' },
+                { n: '₦5,000', l: 'Full report' },
               ].map(s => (
                 <div key={s.n}>
                   <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 17, fontWeight: 800, color: '#CFAF6E', lineHeight: 1.1 }}>{s.n}</div>
@@ -477,7 +477,7 @@ export default function Home() {
               {
                 n: '03',
                 title: 'Receive your report',
-                desc: 'Get a CLEAR, CAUTION, or CRITICAL verdict with full evidence for each check. Unlock the 3-page PDF intelligence dossier for ₦2,500 and share with your lawyer.',
+                desc: 'Get a CLEAR, CAUTION, or CRITICAL verdict with full evidence for each check. Unlock the 3-page PDF intelligence dossier for ₦5,000 and share with your lawyer.',
                 icon: <IconScroll size={20} color="#0A5C45" />,
               },
             ].map((s, i) => (
@@ -620,7 +620,7 @@ export default function Home() {
                   ['No site visit needed', 'Share a Google Maps link. We handle the rest.'],
                   ['Works from any country', 'Run a full 6-check verification from London, Toronto, or Houston.'],
                   ['Show your lawyer', 'Download the PDF dossier and share it as your starting point for due diligence.'],
-                  ['Know before the pressure starts', '₦2,500 buys you the facts before anyone can rush you.'],
+                  ['Know before the pressure starts', '₦5,000 buys you the facts before anyone can rush you.'],
                 ].map(([t, d]) => (
                   <div key={t} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     <div style={{
@@ -653,7 +653,7 @@ export default function Home() {
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {[
                 { stat: '< 2 min', label: 'Average report time', desc: 'From location submission to complete 6-check report.' },
-                { stat: '₦2,500', label: 'One-time cost', desc: 'No account, no subscription. Receipt and report emailed instantly.' },
+                { stat: '₦5,000', label: 'One-time cost', desc: 'No account, no subscription. Receipt and report emailed instantly.' },
                 { stat: '6 checks', label: 'Simultaneous data sources', desc: 'Satellite, gazette, flood, court, LUC, and fraud — all in parallel.' },
                 { stat: '100%', label: 'Remote — no site visit', desc: 'All you need is a location. Works from anywhere in the world.' },
               ].map(s => (
@@ -683,7 +683,7 @@ export default function Home() {
         <div style={{ maxWidth: 680, margin: '0 auto', textAlign: 'center' }}>
           <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#0A5C45', letterSpacing: '2px', marginBottom: 16 }}>PRICING</div>
           <h2 style={{ fontFamily: "'Lora',serif", fontSize: 'clamp(28px,3.5vw,42px)', fontWeight: 600, letterSpacing: '-0.8px', marginBottom: 14 }}>
-            ₦2,500 today.<br />Or millions lost tomorrow.
+            ₦5,000 today.<br />Or millions lost tomorrow.
           </h2>
           <p style={{ fontSize: 15, color: '#6B7280', lineHeight: 1.75, marginBottom: 56 }}>
             The average Lagos land fraud loss is ₦8–₦50 million. A full LagosLandCheck report costs less than a taxi ride.
@@ -697,7 +697,7 @@ export default function Home() {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
               <div>
                 <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#9CA3AF', letterSpacing: '1px', marginBottom: 6 }}>FULL INTELLIGENCE REPORT</div>
-                <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 36, fontWeight: 800, color: '#0A5C45', lineHeight: 1 }}>₦2,500</div>
+                <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 36, fontWeight: 800, color: '#0A5C45', lineHeight: 1 }}>₦5,000</div>
                 <div style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>One-time · No account · No subscription</div>
               </div>
               <div style={{ textAlign: 'right' }}>
@@ -738,7 +738,7 @@ export default function Home() {
               borderRadius: 10, fontSize: 15, fontWeight: 700, color: '#fff',
               boxShadow: '0 4px 12px rgba(207,175,110,0.25)',
             }}>
-              Start free · Unlock for ₦2,500
+              Start free · Unlock for ₦5,000
               <IconArrow size={14} color="#fff" />
             </a>
 
@@ -814,7 +814,7 @@ export default function Home() {
                 LagosLandCheck catches all of these — in 2 minutes.
               </h3>
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)' }}>
-                ₦2,500 for a full report. Compare that to what you stand to lose.
+                ₦5,000 for a full report. Compare that to what you stand to lose.
               </p>
             </div>
             <a href="/agent" style={{
@@ -977,7 +977,7 @@ export default function Home() {
               ))}
               <div style={{ marginTop: 16, padding: '14px', background: 'rgba(207,175,110,0.06)', borderRadius: 10, border: '1px solid rgba(207,175,110,0.2)', textAlign: 'center' }}>
                 <p style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>Full details, evidence, and PDF dossier</p>
-                <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, color: '#0A5C45', marginBottom: 4 }}>₦2,500</div>
+                <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, color: '#0A5C45', marginBottom: 4 }}>₦5,000</div>
                 <p style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace' }}>One-time · Secure via Paystack</p>
               </div>
             </div>
