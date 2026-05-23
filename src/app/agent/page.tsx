@@ -347,15 +347,20 @@ export default function AgentPage() {
       `}</style>
 
       {/* NAV */}
-      <nav style={{ background: '#07382C', padding: '0.75rem 1.25rem', display: 'flex', alignItems: 'center', gap: 10, position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 2px 12px rgba(0,0,0,0.2)' }}>
-        <button onClick={() => stage === 'input' ? window.location.href = '/' : setStage('input')}
-          style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 7, padding: '5px 12px', color: '#fff', fontSize: 12, cursor: 'pointer' }}>
-          ← {stage === 'input' ? 'Home' : 'New check'}
-        </button>
-        <div style={{ width: 28, height: 28, background: '#0A5C45', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+      <nav style={{ background: '#07382C', padding: '0 1.25rem', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 1px 0 rgba(255,255,255,0.04)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button onClick={() => stage === 'input' ? window.location.href = '/' : setStage('input')}
+            style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 7, padding: '5px 12px', color: 'rgba(255,255,255,0.7)', fontSize: 12, cursor: 'pointer' }}>
+            ← {stage === 'input' ? 'Home' : 'New check'}
+          </button>
+          <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+            <svg width="28" height="28" viewBox="0 0 44 44" fill="none">
+              <path d="M22 3 L38 9 L38 26 C38 35 22 42 22 42 C22 42 6 35 6 26 L6 9 Z" fill="rgba(207,175,110,0.1)" stroke="#CFAF6E" strokeWidth="2.5" strokeLinejoin="round"/>
+              <path d="M13 22 L19.5 29 L31 16" stroke="#CFAF6E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            <span style={{ fontWeight: 800, fontSize: 14, color: '#fff', fontFamily: "'Syne',sans-serif" }}>LagosLandCheck</span>
+          </a>
         </div>
-        <span style={{ fontWeight: 700, fontSize: 14, color: '#fff' }}>Lagos Land Agent</span>
         <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
           <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ADE80', animation: 'pulse 2s infinite', display: 'inline-block' }} />
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace' }}>
