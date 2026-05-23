@@ -252,15 +252,36 @@ export default function Home() {
         @media(max-width:900px){
           .hero-grid{grid-template-columns:1fr!important}
           .mock-hide{display:none!important}
-          .how-grid{grid-template-columns:1fr 1fr!important}
+          .how-grid{grid-template-columns:1fr!important}
           .checks-grid{grid-template-columns:1fr!important}
           .footer-cols{grid-template-columns:1fr 1fr!important}
+          .diaspora-grid{grid-template-columns:1fr!important}
+          .stats-grid{grid-template-columns:1fr 1fr!important}
+          .cred-strip{display:none!important}
+          .pricing-feats{grid-template-columns:1fr!important}
+          .consequences-grid{grid-template-columns:1fr 1fr!important}
+          .trust-grid{grid-template-columns:1fr 1fr!important}
+          .cta-band{flex-direction:column!important;text-align:center!important}
         }
         @media(max-width:640px){
-          .hero-headline{font-size:clamp(32px,9vw,52px)!important}
+          .hero-headline{font-size:clamp(30px,9vw,48px)!important}
+          .hero-sub{font-size:15px!important}
+          .hero-stat-row{gap:1.25rem!important}
+          .hero-ctas{flex-direction:column!important;align-items:stretch!important}
+          .hero-ctas a, .hero-ctas button{justify-content:center!important;text-align:center!important}
           .how-grid{grid-template-columns:1fr!important}
           .footer-cols{grid-template-columns:1fr!important;gap:1.5rem!important}
-          .trust-row{flex-wrap:wrap!important}
+          .trust-row{flex-wrap:wrap!important;gap:1rem!important;padding-top:16px!important}
+          .diaspora-grid{grid-template-columns:1fr!important;gap:2rem!important}
+          .checks-grid{grid-template-columns:1fr!important}
+          .consequences-grid{grid-template-columns:1fr!important}
+          .trust-grid{grid-template-columns:1fr!important}
+          .stats-grid{grid-template-columns:1fr!important}
+          .pricing-feats{grid-template-columns:1fr!important}
+          .nav-desktop{display:none!important}
+          .cred-strip{display:none!important}
+          .section-pad{padding:60px 1.25rem!important}
+          .hero-pad{padding:56px 1.25rem 80px!important}
         }
       `}</style>
 
@@ -276,7 +297,7 @@ export default function Home() {
       }}>
         <Logo variant="dark" />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
+        <div className="nav-desktop" style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
           <div style={{ display: 'flex', gap: '1.75rem' }}>
             {[['How it works', '#how-it-works'], ['Checks', '#checks'], ['Pricing', '#pricing']].map(([l, h]) => (
               <a key={l} href={h} className="nav-link" style={{ fontSize: 13 }}>{l}</a>
@@ -297,7 +318,7 @@ export default function Home() {
       </nav>
 
       {/* ── HERO ─────────────────────────────────────────── */}
-      <section style={{
+      <section className="hero-pad" style={{
         background: '#07382C',
         padding: '80px 2rem 100px',
         position: 'relative',
@@ -346,7 +367,7 @@ export default function Home() {
               <span style={{ color: '#CFAF6E', fontStyle: 'italic' }}>Every time.</span>
             </h1>
 
-            <p className="a3" style={{
+            <p className="a3" className="hero-sub" style={{
               fontSize: 17, color: 'rgba(255,255,255,0.62)',
               lineHeight: 1.75, maxWidth: 440, marginBottom: 36,
             }}>
@@ -378,7 +399,7 @@ export default function Home() {
             </div>
 
             {/* Trust row — clean, no emoji */}
-            <div className="trust-row" style={{
+            <div className="trust-row hero-stat-row" style={{
               display: 'flex', alignItems: 'center', gap: '1.75rem',
               paddingTop: 20, borderTop: '1px solid rgba(255,255,255,0.08)',
             }}>
@@ -403,7 +424,7 @@ export default function Home() {
       </section>
 
       {/* ── CREDIBILITY STRIP ─────────────────────────────── */}
-      <section style={{ background: '#F9FAFB', borderBottom: '1px solid #F3F4F6', padding: '18px 2rem' }}>
+      <section className="cred-strip" style={{ background: '#F9FAFB', borderBottom: '1px solid #F3F4F6', padding: '18px 2rem' }}>
         <div style={{
           maxWidth: 1100, margin: '0 auto',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
@@ -429,7 +450,7 @@ export default function Home() {
       </section>
 
       {/* ── HOW IT WORKS ─────────────────────────────────── */}
-      <section id="how-it-works" style={{ padding: '100px 2rem', background: '#fff' }}>
+      <section id="how-it-works" className="section-pad" style={{ padding: '100px 2rem', background: '#fff' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ marginBottom: 64 }}>
             <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#0A5C45', letterSpacing: '2px', marginBottom: 12 }}>HOW IT WORKS</div>
@@ -491,7 +512,7 @@ export default function Home() {
       </section>
 
       {/* ── 6 CHECKS ─────────────────────────────────────── */}
-      <section id="checks" style={{ padding: '100px 2rem', background: '#F9FAFB' }}>
+      <section id="checks" className="section-pad" style={{ padding: '100px 2rem', background: '#F9FAFB' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 56, flexWrap: 'wrap', gap: 20 }}>
             <div>
@@ -578,9 +599,9 @@ export default function Home() {
       </section>
 
       {/* ── DIASPORA SECTION ─────────────────────────────── */}
-      <section style={{ background: '#07382C', padding: '100px 2rem' }}>
+      <section className="section-pad" style={{ background: '#07382C', padding: '100px 2rem' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center' }}>
+          <div className="diaspora-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center' }}>
             <div>
               <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#CFAF6E', letterSpacing: '2px', marginBottom: 16 }}>FOR DIASPORA BUYERS</div>
               <h2 style={{
@@ -658,7 +679,7 @@ export default function Home() {
       </section>
 
       {/* ── PRICING ──────────────────────────────────────── */}
-      <section id="pricing" style={{ padding: '100px 2rem', background: '#fff' }}>
+      <section id="pricing" className="section-pad" style={{ padding: '100px 2rem', background: '#fff' }}>
         <div style={{ maxWidth: 680, margin: '0 auto', textAlign: 'center' }}>
           <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#0A5C45', letterSpacing: '2px', marginBottom: 16 }}>PRICING</div>
           <h2 style={{ fontFamily: "'Lora',serif", fontSize: 'clamp(28px,3.5vw,42px)', fontWeight: 600, letterSpacing: '-0.8px', marginBottom: 14 }}>
@@ -686,7 +707,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', marginBottom: 28 }}>
+            <div className="pricing-feats" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 24px', marginBottom: 28 }}>
               {[
                 [true, 'Risk verdict (CLEAR / CAUTION / CRITICAL)'],
                 [true, '6 check results with status'],
@@ -738,7 +759,7 @@ export default function Home() {
             </h2>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 2, marginBottom: 32 }}>
+          <div className="consequences-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 2, marginBottom: 32 }}>
             {[
               {
                 icon: <IconScroll size={22} color="#991B1B" />,
@@ -783,7 +804,7 @@ export default function Home() {
           </div>
 
           {/* CTA band */}
-          <div style={{
+          <div className="cta-band" style={{
             background: '#07382C', borderRadius: 12, padding: '36px 44px',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             flexWrap: 'wrap', gap: 20,
@@ -812,7 +833,7 @@ export default function Home() {
       {/* ── TRUST SIGNALS ────────────────────────────────── */}
       <section style={{ background: '#fff', padding: '80px 2rem', borderTop: '1px solid #F3F4F6' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 2 }}>
+          <div className="trust-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 2 }}>
             {[
               { icon: <IconShield size={18} color="#0A5C45" />, title: 'No documents stored', desc: 'No survey plans or personal documents are stored permanently. Your query is processed and deleted.' },
               { icon: <IconScroll size={18} color="#0A5C45" />, title: 'Encrypted in transit', desc: 'All requests are encrypted. We never share your property search data with third parties.' },
