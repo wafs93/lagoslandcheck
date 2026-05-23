@@ -725,10 +725,10 @@ export default function Home() {
               </p>
               <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginBottom: '2rem' }}>
                 {[
-                  { icon: <IconMapPin size={16} color="#CFAF6E" />, t: 'No site visit needed', d: 'Your rep takes a photo, shares a Google Maps link, or gives coordinates. That's all we need.' },
-                  { icon: <IconGlobe size={16} color="#CFAF6E" />, t: 'Works from anywhere', d: 'Run a full verification from London, Toronto, or Houston in 2 minutes.' },
-                  { icon: <IconFile size={16} color="#CFAF6E" />, t: 'Show your lawyer', d: 'Download the PDF dossier and send it to your Lagos property lawyer as a starting point.' },
-                  { icon: <IconShield size={16} color="#CFAF6E" />, t: 'Know before the pressure hits', d: '₦2,500 for the facts before anyone can rush you into a decision worth millions.' },
+                  { icon: <IconMapPin size={16} color="#CFAF6E" />, t: 'No site visit needed', d: "Your rep takes a photo, shares a Google Maps link, or gives coordinates. That's all we need." },
+                  { icon: <IconGlobe size={16} color="#CFAF6E" />, t: 'Works from anywhere', d: "Run a full verification from London, Toronto, or Houston in 2 minutes." },
+                  { icon: <IconFile size={16} color="#CFAF6E" />, t: 'Show your lawyer', d: "Download the PDF dossier and send it to your Lagos property lawyer as a starting point." },
+                  { icon: <IconShield size={16} color="#CFAF6E" />, t: 'Know before the pressure hits', d: "\u20a62,500 for the facts before anyone can rush you into a decision worth millions." },
                 ].map(f => (
                   <div key={f.t} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     <div style={{ width: 36, height: 36, background: 'rgba(207,175,110,.12)', borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, border: '1px solid rgba(207,175,110,.2)' }}>{f.icon}</div>
