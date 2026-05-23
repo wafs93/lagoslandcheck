@@ -79,9 +79,9 @@ export function buildPdfHtml({ checks, overall, lat, lng, locationLabel, refNo }
   const cautionCount = checks.filter(c => c.status === 'caution' || c.status === 'critical').length
   const clearCount = checks.filter(c => c.status === 'clear').length
 
-  const locationDisplay = locationLabel && !locationLabel.startsWith('http')
-    ? locationLabel.slice(0, 60)
-    : `${latNum.toFixed(5)}°N, ${lngNum.toFixed(5)}°E`
+  // Only show description if it's a real human-readable label, not just coordinates or a URL
+  const isJustCoords = !locationLabel || locationLabel.startsWith('http') || /^\d+\.\d+/.test(locationLabel.trim())
+  const locationDisplay = isJustCoords ? '' : locationLabel.slice(0, 60)
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -132,8 +132,8 @@ export function buildPdfHtml({ checks, overall, lat, lng, locationLabel, refNo }
 
   /* Cover body — fills the space between header and footer */
   .cover-body{
-    flex:1;display:flex;flex-direction:column;
-    padding:44px 44px 0;
+    flex:1;display:flex;flex-direction:column;justify-content:space-between;
+    padding:44px 44px 28px;
     position:relative;z-index:1
   }
 
