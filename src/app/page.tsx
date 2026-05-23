@@ -128,45 +128,24 @@ const IconUsers = ({ size = 22, color = 'currentColor' }) => (
 const LLCLogo = ({ variant = 'dark', size = 'md' }: { variant?: 'dark' | 'light', size?: 'sm' | 'md' | 'lg' }) => {
   const goldColor = '#CFAF6E'
   const textColor = variant === 'dark' ? '#ffffff' : '#07382C'
-  const iconBg = variant === 'dark' ? 'rgba(207,175,110,0.12)' : 'rgba(7,56,44,0.08)'
-  const iconBorder = variant === 'dark' ? 'rgba(207,175,110,0.35)' : 'rgba(7,56,44,0.2)'
-  const sizes = { sm: { box: 28, font: 13, wfont: 13 }, md: { box: 36, font: 17, wfont: 15 }, lg: { box: 48, font: 22, wfont: 18 } }
+  const shieldStroke = variant === 'dark' ? '#CFAF6E' : '#07382C'
+  const shieldFill = variant === 'dark' ? 'rgba(207,175,110,0.1)' : 'rgba(7,56,44,0.07)'
+  const sizes = {
+    sm: { shield: 26, wfont: 13, subfont: 7, gap: 8 },
+    md: { shield: 34, wfont: 15, subfont: 8, gap: 10 },
+    lg: { shield: 44, wfont: 18, subfont: 9, gap: 12 },
+  }
   const s = sizes[size]
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: size === 'sm' ? 8 : 10 }}>
-      {/* Monogram block */}
-      <div style={{
-        width: s.box, height: s.box,
-        border: `1.5px solid ${iconBorder}`,
-        borderRadius: 6,
-        background: iconBg,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        position: 'relative',
-        flexShrink: 0,
-      }}>
-        <span style={{
-          fontFamily: "'Syne', sans-serif",
-          fontWeight: 800,
-          fontSize: s.font,
-          color: goldColor,
-          letterSpacing: '-1px',
-          lineHeight: 1,
-        }}>LLC</span>
-        {/* Tiny pin dot top-right */}
-        <div style={{
-          position: 'absolute',
-          top: 3,
-          right: 3,
-          width: 4,
-          height: 4,
-          borderRadius: '50%',
-          background: goldColor,
-          opacity: 0.7,
-        }} />
-      </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: s.gap }}>
+      {/* Shield mark — Option C */}
+      <svg width={s.shield} height={s.shield} viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ flexShrink: 0 }}>
+        <path d="M22 3 L38 9 L38 26 C38 35 22 42 22 42 C22 42 6 35 6 26 L6 9 Z"
+          fill={shieldFill} stroke={shieldStroke} strokeWidth="2" strokeLinejoin="round"/>
+        <path d="M13 22 L19.5 29 L31 16"
+          stroke={shieldStroke} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+      </svg>
       {/* Wordmark */}
       <div>
         <div style={{
@@ -181,7 +160,7 @@ const LLCLogo = ({ variant = 'dark', size = 'md' }: { variant?: 'dark' | 'light'
         </div>
         <div style={{
           fontFamily: "'JetBrains Mono', monospace",
-          fontSize: 8,
+          fontSize: s.subfont,
           color: goldColor,
           letterSpacing: '1.8px',
           marginTop: 1,
@@ -672,9 +651,10 @@ export default function Home() {
           <div style={{ flex: 1, minWidth: 280, background: '#F8FAF9', borderRadius: 16, border: '1px solid #E5E7EB', overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,.06)' }}>
             <div style={{ background: '#0A5C45', padding: '10px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
-                <div style={{ width: 20, height: 20, borderRadius: 4, border: '1px solid rgba(207,175,110,.4)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <span style={{ fontSize: 8, color: '#CFAF6E', fontFamily: 'monospace', fontWeight: 800 }}>LLC</span>
-                </div>
+                <svg width="18" height="18" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M22 3 L38 9 L38 26 C38 35 22 42 22 42 C22 42 6 35 6 26 L6 9 Z" fill="rgba(207,175,110,0.15)" stroke="#CFAF6E" strokeWidth="3" strokeLinejoin="round"/>
+                  <path d="M13 22 L19.5 29 L31 16" stroke="#CFAF6E" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
                 <span style={{ fontSize: 11, color: '#fff', fontWeight: 600 }}>Verification Report</span>
               </div>
               <span style={{ fontSize: 9, fontFamily: "'JetBrains Mono',monospace", background: 'rgba(245,158,11,.2)', color: '#FCD34D', padding: '2px 7px', borderRadius: 4 }}>CAUTION</span>
