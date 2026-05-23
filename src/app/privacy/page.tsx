@@ -224,24 +224,37 @@ export default function PrivacyPage() {
 
       <nav style={{
         background: '#07382C',
-        padding: '0.75rem 1.25rem',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
+        padding: '0 1.25rem',
+        height: 60,
         display: 'flex',
         alignItems: 'center',
-        gap: 10,
-        boxShadow: '0 2px 12px rgba(0,0,0,0.2)',
+        justifyContent: 'space-between',
+        position: 'sticky',
+        top: 0,
+        zIndex: 100,
+        boxShadow: '0 1px 0 rgba(255,255,255,0.04)',
       }}>
-        <Link href="/" style={{
-          background: 'rgba(255,255,255,0.12)',
-          borderRadius: 7,
-          padding: '5px 12px',
-          color: '#fff',
-          fontSize: 12,
-          textDecoration: 'none',
-        }}>← Home</Link>
-        <div style={{ width: 28, height: 28, background: '#0A5C45', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
+        <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
+          <svg width="32" height="32" viewBox="0 0 44 44" fill="none">
+            <path d="M22 3 L38 9 L38 26 C38 35 22 42 22 42 C22 42 6 35 6 26 L6 9 Z"
+              fill="rgba(207,175,110,0.1)" stroke="#CFAF6E" strokeWidth="2.5" strokeLinejoin="round"/>
+            <path d="M13 22 L19.5 29 L31 16"
+              stroke="#CFAF6E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          <div>
+            <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 14, color: '#fff', letterSpacing: '-0.3px', lineHeight: 1.1 }}>LagosLandCheck</div>
+            <div style={{ fontFamily: 'monospace', fontSize: 7, color: '#CFAF6E', letterSpacing: '2px', marginTop: 1 }}>VERIFICATION INTELLIGENCE</div>
+          </div>
+        </a>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
+          <a href="/" style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', textDecoration: 'none', fontWeight: 500 }}>Home</a>
+          <a href="/contact" style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', textDecoration: 'none', fontWeight: 500 }}>Contact</a>
+          <a href="/agent" style={{ padding: '7px 14px', background: 'rgba(207,175,110,0.15)', border: '1px solid rgba(207,175,110,0.3)', borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#CFAF6E', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ADE80', display: 'inline-block' }} />
+            Run a check
+          </a>
         </div>
-        <span style={{ fontWeight: 700, fontSize: 14, color: '#fff' }}>Privacy Policy</span>
       </nav>
 
       <section style={{
