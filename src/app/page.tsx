@@ -367,7 +367,7 @@ export default function Home() {
               <span style={{ color: '#CFAF6E', fontStyle: 'italic' }}>Every time.</span>
             </h1>
 
-            <p className="a3" className="hero-sub" style={{
+            <p className="a3 hero-sub" style={{
               fontSize: 17, color: 'rgba(255,255,255,0.62)',
               lineHeight: 1.75, maxWidth: 440, marginBottom: 36,
             }}>
