@@ -52,7 +52,25 @@ async function verifyPaystackTransaction(paymentRef: string): Promise<VerifyTran
   })
 
   if (!res.ok) {
-    throw new Error(`Paystack verify failed: ${res.status}`)
+    const rawBody = await res.text()
+    let paystackMessage: string | undefined
+    try {
+      const parsed = JSON.parse(rawBody) as { message?: string }
+      if (typeof parsed?.message === 'string') paystackMessage = parsed.message
+    } catch {
+      // Keep rawBody for diagnostics when Paystack doesn't return JSON.
+    }
+
+    console.error('[PAYSTACK_VERIFY_ERROR]', {
+      status: res.status,
+      paymentRef,
+      message: paystackMessage ?? null,
+      body: rawBody,
+    })
+
+    throw new Error(
+      `Paystack verify failed: ${res.status}${paystackMessage ? ` (${paystackMessage})` : ''}`,
+    )
   }
   return res.json()
 }
