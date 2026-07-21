@@ -241,46 +241,18 @@ export default function AgentPage() {
     const lat = result?.lat
     const lng = result?.lng
 
-    console.log('[PAYSTACK_DEBUG][agent:initPaystack] click', {
-      emailValid,
-      hasPaystackKey,
-      lat,
-      lng,
-      hasResult: Boolean(result),
-    })
-
-    if (!emailValid || !hasPaystackKey) {
-      console.log('[PAYSTACK_DEBUG][agent:initPaystack] guard1_return', {
-        emailValid,
-        hasPaystackKey,
-      })
-      return
-    }
-
-    if (!lat || !lng) {
-      console.log('[PAYSTACK_DEBUG][agent:initPaystack] guard2_return', {
-        lat,
-        lng,
-      })
-      return
-    }
-
-    if (paystackInitInFlight.current || payLoading) {
-      console.log('[PAYSTACK_DEBUG][agent:initPaystack] reentry_blocked', { inFlight: paystackInitInFlight.current, payLoading })
-      return
-    }
+    if (!emailValid || !hasPaystackKey) return
+    if (!lat || !lng) return
+    if (paystackInitInFlight.current || payLoading) return
     paystackInitInFlight.current = true
+
     const amountKobo = requestTier === 'verified' ? 3000000 : 500000
     setPayLoading(true)
-    console.log('[PAYSTACK_DEBUG][agent:initPaystack] after_setPayLoading', { amountKobo, requestTier })
+
     const script = document.createElement('script')
     script.src = 'https://js.paystack.co/v1/inline.js'
-    const existingScript = Boolean(document.querySelector('script[src="https://js.paystack.co/v1/inline.js"]'))
-    console.log('[PAYSTACK_DEBUG][agent:initPaystack] before_append_script', { existingScript })
     script.onload = () => {
-      console.log('[PAYSTACK_DEBUG][agent:initPaystack] script_onload_fired')
       try {
-        console.log('[PAYSTACK_DEBUG][agent:initPaystack] before_setup')
         const handler = (window as any).PaystackPop.setup({
           key: PAYSTACK_KEY,
           email,
@@ -311,51 +283,49 @@ export default function AgentPage() {
               setPaid(true)
               setPayLoading(false)
               paystackInitInFlight.current = false
-            } catch (err) {
+            } catch {
               setPayLoading(false)
               paystackInitInFlight.current = false
-              console.error('[PAYSTACK_DEBUG][agent:initPaystack] callback_error', err)
               alert('Could not verify payment. Please contact support with your payment reference.')
               return
             }
+
             sessionStorage.setItem('llc_ref', response.reference)
             sessionStorage.setItem('llc_email', email)
             if (result) sessionStorage.setItem('llc_result', JSON.stringify(result))
-            // Fire-and-forget — email delivery is a bonus
+
             if (result?.lat && result?.lng) {
               const refNo = `LLC-${Date.now().toString(36).toUpperCase()}`
               fetch('/api/send-report', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                  email,
-                  refNo,
-                  paymentRef: response.reference,
-                  lat: result.lat,
-                  lng: result.lng,
+                  email, refNo, paymentRef: response.reference,
+                  lat: result.lat, lng: result.lng,
                   locationLabel: result.location_label,
                   overall: result.overall,
-                  checks: result.checks,
-                  requestTier,
+                  checks: result.checks, requestTier,
                 })
               }).catch(err => console.error('[REPORT_EMAIL_FAIL]', err))
             }
-          }, 
-          onClose: () => { 
+          },
+          onClose: () => {
             setPayLoading(false)
             paystackInitInFlight.current = false
           }
         })
-        console.log('[PAYSTACK_DEBUG][agent:initPaystack] after_setup', { hasHandler: Boolean(handler) })
-        console.log('[PAYSTACK_DEBUG][agent:initPaystack] before_openIframe')
+
         handler.openIframe()
-      } catch (err) {
+      } catch {
         setPayLoading(false)
         paystackInitInFlight.current = false
-        console.error('[PAYSTACK_DEBUG][agent:initPaystack] setup_error', err)
       }
     }
-    script.onerror = (err) => { setPayLoading(false); paystackInitInFlight.current = false; console.error('[PAYSTACK_DEBUG][agent:initPaystack] script_error', err) }
+
+    script.onerror = () => {
+      setPayLoading(false)
+      paystackInitInFlight.current = false
+    }
     document.head.appendChild(script)
   }
 
