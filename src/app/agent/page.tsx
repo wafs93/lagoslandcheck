@@ -46,7 +46,7 @@ const STATUS_CONFIG = {
   queued:   { color: '#D1D5DB', bg: '#F9FAFB', badge: '#F3F4F6', text: '#6B7280', label: 'QUEUED' },
 }
 
-const PAYSTACK_KEY = 'pk_test_17b32b318559c98e18d9413827fe51dcc812d61e'
+const PAYSTACK_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || ''
 const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
 
 // First sentence of details, used as teaser on locked cards
@@ -232,7 +232,8 @@ export default function AgentPage() {
   }
 
   const initPaystack = () => {
-    if (!isValidEmail(email)) return
+    if (!isValidEmail(email) || !PAYSTACK_KEY) return
+    if (!result?.lat || !result?.lng) return
     setPayLoading(true)
     const script = document.createElement('script')
     script.src = 'https://js.paystack.co/v1/inline.js'
@@ -244,9 +245,32 @@ export default function AgentPage() {
           amount: 500000,
           currency: 'NGN',
           ref: `llc_${Date.now()}`,
-          callback: (response: { reference: string }) => {
-            setPaid(true)
-            setPayLoading(false)
+          callback: async (response: { reference: string }) => {
+            try {
+              const verifyRes = await fetch('/api/payment/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  paymentRef: response.reference,
+                  lat: result.lat,
+                  lng: result.lng,
+                  overall: result.overall,
+                }),
+              })
+              const verifyData = await verifyRes.json()
+              if (!verifyRes.ok || !verifyData.success) {
+                setPayLoading(false)
+                alert(verifyData?.error || 'Payment verification failed. Please contact support.')
+                return
+              }
+
+              setPaid(true)
+              setPayLoading(false)
+            } catch {
+              setPayLoading(false)
+              alert('Could not verify payment. Please contact support with your payment reference.')
+              return
+            }
             sessionStorage.setItem('llc_ref', response.reference)
             sessionStorage.setItem('llc_email', email)
             if (result) sessionStorage.setItem('llc_result', JSON.stringify(result))
@@ -317,7 +341,8 @@ export default function AgentPage() {
     const lat = result?.lat || 0
     const lng = result?.lng || 0
     const ref = sessionStorage.getItem('llc_ref') || ''
-    window.open(`/report?lat=${lat}&lng=${lng}&paid=1&ref=${ref}`, '_blank')
+    const paymentQuery = ref ? `&paymentRef=${encodeURIComponent(ref)}` : ''
+    window.open(`/report?lat=${lat}&lng=${lng}${paymentQuery}`, '_blank')
   }
 
   const satelliteUrl = result?.lat && result?.lng

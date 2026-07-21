@@ -27,7 +27,7 @@ const statusConfig = {
   running:  { color: '#60A5FA', bg: '#EFF6FF', badge: '#DBEAFE', text: '#1D4ED8', label: 'CHECKING' },
 }
 
-const PAYSTACK_KEY = 'pk_test_17b32b318559c98e18d9413827fe51dcc812d61e'
+const PAYSTACK_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || ''
 const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
 const checkIcons: Record<string, string> = { satellite: '🛰️', gazette: '📜', flood: '🌊', litigation: '⚖️', luc: '🧾', fraud: '🚨' }
 
@@ -53,7 +53,7 @@ function ReportContent() {
   const params = useSearchParams()
   const rawLat = params.get('lat')
   const rawLng = params.get('lng')
-  const paid = params.get('paid') === '1'
+  const paymentRefParam = params.get('paymentRef')
 
   const [lat, setLat] = useState<string>('')
   const [lng, setLng] = useState<string>('')
@@ -61,7 +61,8 @@ function ReportContent() {
   const [checks, setChecks] = useState<Check[]>([])
   const [overall, setOverall] = useState<string>('CAUTION')
   const [loading, setLoading] = useState(true)
-  const [paidState, setPaidState] = useState(paid)
+  const [paidState, setPaidState] = useState(false)
+  const [unlockError, setUnlockError] = useState('')
   const [email, setEmail] = useState('')
   const [payLoading, setPayLoading] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
@@ -110,8 +111,35 @@ function ReportContent() {
     }
   }, [rawLat, rawLng])
 
+  useEffect(() => {
+    if (!paymentRefParam || paidState || !lat || !lng) return
+    ;(async () => {
+      try {
+        const res = await fetch('/api/payment/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            paymentRef: paymentRefParam,
+            lat: parseFloat(lat),
+            lng: parseFloat(lng),
+            overall,
+          }),
+        })
+        const data = await res.json()
+        if (res.ok && data.success) {
+          setPaidState(true)
+          setUnlockError('')
+          return
+        }
+        setUnlockError(data?.error || 'Payment verification failed.')
+      } catch {
+        setUnlockError('Could not verify payment reference.')
+      }
+    })()
+  }, [paymentRefParam, paidState, lat, lng, overall])
+
   const initPaystack = () => {
-    if (!isValidEmail(email)) return
+    if (!isValidEmail(email) || !PAYSTACK_KEY) return
     setPayLoading(true)
     const s = document.createElement('script')
     s.src = 'https://js.paystack.co/v1/inline.js'
@@ -120,9 +148,33 @@ function ReportContent() {
         const h = (window as any).PaystackPop.setup({
           key: PAYSTACK_KEY, email, amount: 500000, currency: 'NGN',
           ref: `llc_report_${Date.now()}`,
-          callback: (response: { reference: string }) => {
-            setPaidState(true)
-            setPayLoading(false)
+          callback: async (response: { reference: string }) => {
+            try {
+              const verifyRes = await fetch('/api/payment/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  paymentRef: response.reference,
+                  lat: parseFloat(lat),
+                  lng: parseFloat(lng),
+                  overall,
+                }),
+              })
+              const verifyData = await verifyRes.json()
+              if (!verifyRes.ok || !verifyData.success) {
+                setPayLoading(false)
+                alert(verifyData?.error || 'Payment verification failed. Please contact support.')
+                return
+              }
+
+              setPaidState(true)
+              setUnlockError('')
+              setPayLoading(false)
+            } catch {
+              setPayLoading(false)
+              alert('Could not verify payment. Please contact support with your payment reference.')
+              return
+            }
             // Fire-and-forget — email delivery is a bonus, not blocking
             const refNo = `LLC-${Date.now().toString(36).toUpperCase()}`
             fetch('/api/send-report', {
@@ -213,6 +265,12 @@ function ReportContent() {
       </nav>
 
       <div style={{ maxWidth: 700, margin: '0 auto', padding: '1.5rem 1rem 4rem' }}>
+
+        {unlockError && (
+          <div className="appear card" style={{ padding: '0.75rem 1rem', marginBottom: '1rem', background: '#FEF2F2', border: '1px solid #FCA5A5' }}>
+            <p style={{ fontSize: 12, color: '#B91C1C', lineHeight: 1.6 }}>{unlockError}</p>
+          </div>
+        )}
 
         {!hasCoords && (
           <div className="appear card" style={{ padding: '1.5rem', marginBottom: '1rem', background: '#FFF8F0', border: '1px solid #FED7AA' }}>

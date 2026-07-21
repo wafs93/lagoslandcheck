@@ -2,6 +2,7 @@ export const maxDuration = 30
 
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
+import { verifyAndRecordPayment } from '@/lib/paystack'
 
 interface CheckPayload {
   id: string
@@ -51,10 +52,10 @@ function escapeHtml(s: string): string {
 }
 
 function buildEmailHtml(body: RequestBody): string {
-  const { refNo, locationLabel, lat, lng, overall, checks } = body
+  const { refNo, paymentRef, locationLabel, lat, lng, overall, checks } = body
   const v = VERDICT_CONFIG[overall]
   const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
-  const deepLink = `${SITE_URL}/report?lat=${lat}&lng=${lng}&paid=1&ref=${refNo}`
+  const deepLink = `${SITE_URL}/report?lat=${lat}&lng=${lng}&paymentRef=${encodeURIComponent(paymentRef)}&ref=${refNo}`
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
   const mapImg = apiKey
     ? `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=19&size=560x280&maptype=hybrid&markers=color:red%7C${lat},${lng}&key=${apiKey}`
@@ -192,6 +193,27 @@ export async function POST(req: NextRequest) {
     }
     if (!['CLEAR', 'CAUTION', 'CRITICAL'].includes(overall)) {
       return NextResponse.json({ error: 'Invalid overall verdict' }, { status: 400 })
+    }
+
+    const paymentCheck = await verifyAndRecordPayment({
+      paymentRef,
+      lat,
+      lng,
+      overall,
+      paymentEmail: email,
+      resultsJson: {
+        source: 'send-report',
+        refNo,
+        locationLabel,
+        overall,
+        checks,
+      },
+    })
+    if (!paymentCheck.ok) {
+      return NextResponse.json(
+        { success: false, error: paymentCheck.error || 'Payment verification failed' },
+        { status: paymentCheck.status }
+      )
     }
 
     const apiKey = process.env.RESEND_API_KEY
