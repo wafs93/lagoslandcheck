@@ -21,6 +21,8 @@ interface VerificationResult {
   reportId?: string
 }
 
+type ReportTier = 'instant' | 'verified'
+
 type Stage = 'input' | 'processing' | 'results'
 
 const CHECKS_CONFIG = [
@@ -148,6 +150,7 @@ export default function AgentPage() {
   const [paid, setPaid] = useState(false)
   const [email, setEmail] = useState('')
   const [payLoading, setPayLoading] = useState(false)
+  const [requestTier, setRequestTier] = useState<ReportTier>('instant')
   const [chatOpen, setChatOpen] = useState(false)
   const [chatInput, setChatInput] = useState('')
   const [chatMessages, setChatMessages] = useState<{role:'user'|'agent';text:string}[]>([])
@@ -234,6 +237,7 @@ export default function AgentPage() {
   const initPaystack = () => {
     if (!isValidEmail(email) || !PAYSTACK_KEY) return
     if (!result?.lat || !result?.lng) return
+    const amountKobo = requestTier === 'verified' ? 3000000 : 500000
     setPayLoading(true)
     const script = document.createElement('script')
     script.src = 'https://js.paystack.co/v1/inline.js'
@@ -242,7 +246,7 @@ export default function AgentPage() {
         const handler = (window as any).PaystackPop.setup({
           key: PAYSTACK_KEY,
           email,
-          amount: 500000,
+          amount: amountKobo,
           currency: 'NGN',
           ref: `llc_${Date.now()}`,
           callback: async (response: { reference: string }) => {
@@ -255,6 +259,7 @@ export default function AgentPage() {
                   lat: result.lat,
                   lng: result.lng,
                   overall: result.overall,
+                  requestTier,
                 }),
               })
               const verifyData = await verifyRes.json()
@@ -289,6 +294,7 @@ export default function AgentPage() {
                   locationLabel: result.location_label,
                   overall: result.overall,
                   checks: result.checks,
+                  requestTier,
                 })
               }).catch(err => console.error('[REPORT_EMAIL_FAIL]', err))
             }

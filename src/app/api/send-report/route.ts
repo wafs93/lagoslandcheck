@@ -3,6 +3,7 @@ export const maxDuration = 30
 import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { verifyAndRecordPayment } from '@/lib/paystack'
+import { ReportTier } from '@/lib/payment-signature'
 
 interface CheckPayload {
   id: string
@@ -19,6 +20,7 @@ interface RequestBody {
   lat: number
   lng: number
   locationLabel: string
+  requestTier?: ReportTier
   overall: 'CLEAR' | 'CAUTION' | 'CRITICAL'
   checks: CheckPayload[]
 }
@@ -177,7 +179,7 @@ function buildEmailHtml(body: RequestBody): string {
 export async function POST(req: NextRequest) {
   try {
     const body: RequestBody = await req.json()
-    const { email, refNo, paymentRef, lat, lng, locationLabel, overall, checks } = body
+    const { email, refNo, paymentRef, lat, lng, locationLabel, overall, checks, requestTier = 'instant' } = body
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: 'Invalid email' }, { status: 400 })
@@ -207,7 +209,9 @@ export async function POST(req: NextRequest) {
         locationLabel,
         overall,
         checks,
+        requestTier,
       },
+      requestTier,
     })
     if (!paymentCheck.ok) {
       return NextResponse.json(

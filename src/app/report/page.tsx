@@ -49,6 +49,8 @@ function generatePDF(checks: Check[], overall: string, lat: string, lng: string,
   setTimeout(() => { try { win.focus(); win.print() } catch (e) { console.error(e) } }, 1500)
 }
 
+type ReportTier = 'instant' | 'verified'
+
 function ReportContent() {
   const params = useSearchParams()
   const rawLat = params.get('lat')
@@ -65,6 +67,7 @@ function ReportContent() {
   const [unlockError, setUnlockError] = useState('')
   const [email, setEmail] = useState('')
   const [payLoading, setPayLoading] = useState(false)
+  const [requestTier, setRequestTier] = useState<ReportTier>('instant')
   const [expanded, setExpanded] = useState<string | null>(null)
   const [imgZoom, setImgZoom] = useState(false)
 
@@ -140,13 +143,14 @@ function ReportContent() {
 
   const initPaystack = () => {
     if (!isValidEmail(email) || !PAYSTACK_KEY) return
+    const amountKobo = requestTier === 'verified' ? 3000000 : 500000
     setPayLoading(true)
     const s = document.createElement('script')
     s.src = 'https://js.paystack.co/v1/inline.js'
     s.onload = () => {
       try {
         const h = (window as any).PaystackPop.setup({
-          key: PAYSTACK_KEY, email, amount: 500000, currency: 'NGN',
+          key: PAYSTACK_KEY, email, amount: amountKobo, currency: 'NGN',
           ref: `llc_report_${Date.now()}`,
           callback: async (response: { reference: string }) => {
             try {
@@ -158,6 +162,7 @@ function ReportContent() {
                   lat: parseFloat(lat),
                   lng: parseFloat(lng),
                   overall,
+                  requestTier,
                 }),
               })
               const verifyData = await verifyRes.json()
@@ -189,6 +194,7 @@ function ReportContent() {
                 locationLabel: locationLabel || `${lat}, ${lng}`,
                 overall,
                 checks,
+                requestTier,
               })
             }).catch(err => console.error('[REPORT_EMAIL_FAIL]', err))
           },

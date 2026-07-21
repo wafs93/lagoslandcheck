@@ -1,5 +1,5 @@
 import { supabaseAdmin } from './supabase'
-import { REPORT_PRICE_KOBO, buildReportSignature } from './payment-signature'
+import { REPORT_PRICE_KOBO, ReportTier, buildReportSignature } from './payment-signature'
 
 type OverallVerdict = 'CLEAR' | 'CAUTION' | 'CRITICAL'
 
@@ -23,6 +23,7 @@ export interface VerifyAndRecordPaymentArgs {
   lng: number
   overall: OverallVerdict
   resultsJson: Record<string, unknown>
+  requestTier?: ReportTier
   paymentEmail?: string
 }
 
@@ -79,7 +80,7 @@ function extractSignature(row: { lat: number; lng: number; results_json: any } |
 }
 
 export async function verifyAndRecordPayment(args: VerifyAndRecordPaymentArgs): Promise<VerifyAndRecordPaymentResult> {
-  const { paymentRef, lat, lng, overall, resultsJson, paymentEmail } = args
+  const { paymentRef, lat, lng, overall, resultsJson, paymentEmail, requestTier = 'instant' } = args
 
   let verification: VerifyTransactionResponse
   try {
@@ -96,7 +97,7 @@ export async function verifyAndRecordPayment(args: VerifyAndRecordPaymentArgs): 
   if (tx.status !== 'success') {
     return { ok: false, status: 402, error: 'Transaction not successful' }
   }
-  if (tx.amount !== REPORT_PRICE_KOBO) {
+  if (tx.amount !== REPORT_PRICE_KOBO[requestTier]) {
     return { ok: false, status: 402, error: 'Invalid payment amount' }
   }
   if (tx.reference !== paymentRef) {
