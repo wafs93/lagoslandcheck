@@ -236,6 +236,7 @@ export default function AgentPage() {
   }
 
   const initPaystack = () => {
+    alert('INIT PAYSTACK STARTED')
     const emailValid = isValidEmail(email)
     const hasPaystackKey = Boolean(PAYSTACK_KEY)
     const lat = result?.lat
@@ -252,6 +253,7 @@ export default function AgentPage() {
     const script = document.createElement('script')
     script.src = 'https://js.paystack.co/v1/inline.js'
     script.onload = () => {
+      alert('SCRIPT LOADED')
       try {
         const handler = (window as any).PaystackPop.setup({
           key: PAYSTACK_KEY,
@@ -316,9 +318,11 @@ export default function AgentPage() {
         })
 
         handler.openIframe()
-      } catch {
+      } catch (err) {
         setPayLoading(false)
         paystackInitInFlight.current = false
+        const msg = err instanceof Error ? err.message : String(err)
+        alert('SETUP ERROR: ' + msg)
       }
     }
 
@@ -727,7 +731,7 @@ export default function AgentPage() {
               )}
               <div style={{ marginBottom: isValidEmail(email) ? 10 : 0 }} />
 
-              <button onClick={() => { alert('BUTTON WAS CLICKED'); initPaystack() }} disabled={payLoading || !isValidEmail(email)}
+              <button onClick={initPaystack} disabled={payLoading || !isValidEmail(email)}
                 style={{ width: '100%', padding: '15px 0', background: isValidEmail(email) ? 'linear-gradient(135deg,#CFAF6E,#B8942A)' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 11, fontSize: 15, fontWeight: 700, color: '#fff', cursor: isValidEmail(email) ? 'pointer' : 'not-allowed', fontFamily: "'Syne',sans-serif", boxShadow: isValidEmail(email) ? '0 4px 12px rgba(207,175,110,0.3)' : 'none' }}>
                 {payLoading ? '⏳ Opening payment...' : '🔓 Unlock Full Report — ₦5,000'}
               </button>
