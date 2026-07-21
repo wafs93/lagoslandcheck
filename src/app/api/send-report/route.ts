@@ -177,7 +177,7 @@ function buildEmailHtml(body: RequestBody): string {
 export async function POST(req: NextRequest) {
   try {
     const body: RequestBody = await req.json()
-    const { email, refNo, paymentRef, lat, lng, overall, checks } = body
+    const { email, refNo, paymentRef, lat, lng, locationLabel, overall, checks } = body
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: 'Invalid email' }, { status: 400 })
