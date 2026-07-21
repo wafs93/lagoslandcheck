@@ -235,8 +235,34 @@ export default function AgentPage() {
   }
 
   const initPaystack = () => {
-    if (!isValidEmail(email) || !PAYSTACK_KEY) return
-    if (!result?.lat || !result?.lng) return
+    const emailValid = isValidEmail(email)
+    const hasPaystackKey = Boolean(PAYSTACK_KEY)
+    const lat = result?.lat
+    const lng = result?.lng
+
+    console.log('[PAYSTACK_DEBUG][agent:initPaystack] click', {
+      emailValid,
+      hasPaystackKey,
+      lat,
+      lng,
+      hasResult: Boolean(result),
+    })
+
+    if (!emailValid || !hasPaystackKey) {
+      console.log('[PAYSTACK_DEBUG][agent:initPaystack] guard1_return', {
+        emailValid,
+        hasPaystackKey,
+      })
+      return
+    }
+
+    if (!lat || !lng) {
+      console.log('[PAYSTACK_DEBUG][agent:initPaystack] guard2_return', {
+        lat,
+        lng,
+      })
+      return
+    }
     const amountKobo = requestTier === 'verified' ? 3000000 : 500000
     setPayLoading(true)
     const script = document.createElement('script')
