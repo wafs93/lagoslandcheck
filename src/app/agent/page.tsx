@@ -727,7 +727,7 @@ export default function AgentPage() {
               )}
               <div style={{ marginBottom: isValidEmail(email) ? 10 : 0 }} />
 
-              <button onClick={initPaystack} disabled={payLoading || !isValidEmail(email)}
+              <button onClick={() => { alert('BUTTON WAS CLICKED'); initPaystack() }} disabled={payLoading || !isValidEmail(email)}
                 style={{ width: '100%', padding: '15px 0', background: isValidEmail(email) ? 'linear-gradient(135deg,#CFAF6E,#B8942A)' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 11, fontSize: 15, fontWeight: 700, color: '#fff', cursor: isValidEmail(email) ? 'pointer' : 'not-allowed', fontFamily: "'Syne',sans-serif", boxShadow: isValidEmail(email) ? '0 4px 12px rgba(207,175,110,0.3)' : 'none' }}>
                 {payLoading ? '⏳ Opening payment...' : '🔓 Unlock Full Report — ₦5,000'}
               </button>
