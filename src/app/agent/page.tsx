@@ -255,62 +255,65 @@ export default function AgentPage() {
     script.onload = () => {
       alert('SCRIPT LOADED')
       try {
+        const paystackCallback = async (response: { reference: string }) => {
+          try {
+            const verifyRes = await fetch('/api/payment/verify', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                paymentRef: response.reference,
+                lat: result.lat,
+                lng: result.lng,
+                overall: result.overall,
+                requestTier,
+              }),
+            })
+            const verifyData = await verifyRes.json()
+            if (!verifyRes.ok || !verifyData.success) {
+              setPayLoading(false)
+              paystackInitInFlight.current = false
+              alert(verifyData?.error || 'Payment verification failed. Please contact support.')
+              return
+            }
+
+            setPaid(true)
+            setPayLoading(false)
+            paystackInitInFlight.current = false
+          } catch {
+            setPayLoading(false)
+            paystackInitInFlight.current = false
+            alert('Could not verify payment. Please contact support with your payment reference.')
+            return
+          }
+
+          sessionStorage.setItem('llc_ref', response.reference)
+          sessionStorage.setItem('llc_email', email)
+          if (result) sessionStorage.setItem('llc_result', JSON.stringify(result))
+
+          if (result?.lat && result?.lng) {
+            const refNo = `LLC-${Date.now().toString(36).toUpperCase()}`
+            fetch('/api/send-report', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                email, refNo, paymentRef: response.reference,
+                lat: result.lat, lng: result.lng,
+                locationLabel: result.location_label,
+                overall: result.overall,
+                checks: result.checks, requestTier,
+              })
+            }).catch(err => console.error('[REPORT_EMAIL_FAIL]', err))
+          }
+        }
+
+        alert('callback type: ' + typeof paystackCallback)
         const handler = (window as any).PaystackPop.setup({
           key: PAYSTACK_KEY,
           email,
           amount: amountKobo,
           currency: 'NGN',
           ref: `llc_${Date.now()}`,
-          callback: async (response: { reference: string }) => {
-            try {
-              const verifyRes = await fetch('/api/payment/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  paymentRef: response.reference,
-                  lat: result.lat,
-                  lng: result.lng,
-                  overall: result.overall,
-                  requestTier,
-                }),
-              })
-              const verifyData = await verifyRes.json()
-              if (!verifyRes.ok || !verifyData.success) {
-                setPayLoading(false)
-                paystackInitInFlight.current = false
-                alert(verifyData?.error || 'Payment verification failed. Please contact support.')
-                return
-              }
-
-              setPaid(true)
-              setPayLoading(false)
-              paystackInitInFlight.current = false
-            } catch {
-              setPayLoading(false)
-              paystackInitInFlight.current = false
-              alert('Could not verify payment. Please contact support with your payment reference.')
-              return
-            }
-
-            sessionStorage.setItem('llc_ref', response.reference)
-            sessionStorage.setItem('llc_email', email)
-            if (result) sessionStorage.setItem('llc_result', JSON.stringify(result))
-
-            if (result?.lat && result?.lng) {
-              const refNo = `LLC-${Date.now().toString(36).toUpperCase()}`
-              fetch('/api/send-report', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  email, refNo, paymentRef: response.reference,
-                  lat: result.lat, lng: result.lng,
-                  locationLabel: result.location_label,
-                  overall: result.overall,
-                  checks: result.checks, requestTier,
-                })
-              }).catch(err => console.error('[REPORT_EMAIL_FAIL]', err))
-            }
-          },
+          callback: paystackCallback,
           onClose: () => {
             setPayLoading(false)
             paystackInitInFlight.current = false
