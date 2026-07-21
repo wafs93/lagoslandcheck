@@ -236,7 +236,6 @@ export default function AgentPage() {
   }
 
   const initPaystack = () => {
-    alert('INIT PAYSTACK STARTED')
     const emailValid = isValidEmail(email)
     const hasPaystackKey = Boolean(PAYSTACK_KEY)
     const lat = result?.lat
@@ -253,15 +252,14 @@ export default function AgentPage() {
     const script = document.createElement('script')
     script.src = 'https://js.paystack.co/v1/inline.js'
     script.onload = () => {
-      alert('SCRIPT LOADED')
       try {
-        const paystackCallback = async (response: { reference: string }) => {
+        const handlePaymentSuccess = async (reference: string) => {
           try {
             const verifyRes = await fetch('/api/payment/verify', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                paymentRef: response.reference,
+                paymentRef: reference,
                 lat: result.lat,
                 lng: result.lng,
                 overall: result.overall,
@@ -286,7 +284,7 @@ export default function AgentPage() {
             return
           }
 
-          sessionStorage.setItem('llc_ref', response.reference)
+          sessionStorage.setItem('llc_ref', reference)
           sessionStorage.setItem('llc_email', email)
           if (result) sessionStorage.setItem('llc_result', JSON.stringify(result))
 
@@ -296,7 +294,7 @@ export default function AgentPage() {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                email, refNo, paymentRef: response.reference,
+                email, refNo, paymentRef: reference,
                 lat: result.lat, lng: result.lng,
                 locationLabel: result.location_label,
                 overall: result.overall,
@@ -306,7 +304,10 @@ export default function AgentPage() {
           }
         }
 
-        alert('callback type: ' + typeof paystackCallback)
+        const paystackCallback = (response: { reference: string }) => {
+          void handlePaymentSuccess(response.reference)
+        }
+
         const handler = (window as any).PaystackPop.setup({
           key: PAYSTACK_KEY,
           email,
@@ -321,11 +322,10 @@ export default function AgentPage() {
         })
 
         handler.openIframe()
-      } catch (err) {
+      } catch {
         setPayLoading(false)
         paystackInitInFlight.current = false
-        const msg = err instanceof Error ? err.message : String(err)
-        alert('SETUP ERROR: ' + msg)
+        alert('Could not open payment. Please try again.')
       }
     }
 

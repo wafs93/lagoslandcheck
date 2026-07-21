@@ -149,59 +149,68 @@ function ReportContent() {
     s.src = 'https://js.paystack.co/v1/inline.js'
     s.onload = () => {
       try {
-        const h = (window as any).PaystackPop.setup({
-          key: PAYSTACK_KEY, email, amount: amountKobo, currency: 'NGN',
-          ref: `llc_report_${Date.now()}`,
-          callback: async (response: { reference: string }) => {
-            try {
-              const verifyRes = await fetch('/api/payment/verify', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  paymentRef: response.reference,
-                  lat: parseFloat(lat),
-                  lng: parseFloat(lng),
-                  overall,
-                  requestTier,
-                }),
-              })
-              const verifyData = await verifyRes.json()
-              if (!verifyRes.ok || !verifyData.success) {
-                setPayLoading(false)
-                alert(verifyData?.error || 'Payment verification failed. Please contact support.')
-                return
-              }
-
-              setPaidState(true)
-              setUnlockError('')
-              setPayLoading(false)
-            } catch {
-              setPayLoading(false)
-              alert('Could not verify payment. Please contact support with your payment reference.')
-              return
-            }
-            // Fire-and-forget — email delivery is a bonus, not blocking
-            const refNo = `LLC-${Date.now().toString(36).toUpperCase()}`
-            fetch('/api/send-report', {
+        const handlePaymentSuccess = async (reference: string) => {
+          try {
+            const verifyRes = await fetch('/api/payment/verify', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
-                email,
-                refNo,
-                paymentRef: response.reference,
+                paymentRef: reference,
                 lat: parseFloat(lat),
                 lng: parseFloat(lng),
-                locationLabel: locationLabel || `${lat}, ${lng}`,
                 overall,
-                checks,
                 requestTier,
-              })
-            }).catch(err => console.error('[REPORT_EMAIL_FAIL]', err))
-          },
+              }),
+            })
+            const verifyData = await verifyRes.json()
+            if (!verifyRes.ok || !verifyData.success) {
+              setPayLoading(false)
+              alert(verifyData?.error || 'Payment verification failed. Please contact support.')
+              return
+            }
+
+            setPaidState(true)
+            setUnlockError('')
+            setPayLoading(false)
+          } catch {
+            setPayLoading(false)
+            alert('Could not verify payment. Please contact support with your payment reference.')
+            return
+          }
+          // Fire-and-forget — email delivery is a bonus, not blocking
+          const refNo = `LLC-${Date.now().toString(36).toUpperCase()}`
+          fetch('/api/send-report', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              email,
+              refNo,
+              paymentRef: reference,
+              lat: parseFloat(lat),
+              lng: parseFloat(lng),
+              locationLabel: locationLabel || `${lat}, ${lng}`,
+              overall,
+              checks,
+              requestTier,
+            })
+          }).catch(err => console.error('[REPORT_EMAIL_FAIL]', err))
+        }
+
+        const paystackCallback = (response: { reference: string }) => {
+          void handlePaymentSuccess(response.reference)
+        }
+
+        const h = (window as any).PaystackPop.setup({
+          key: PAYSTACK_KEY, email, amount: amountKobo, currency: 'NGN',
+          ref: `llc_report_${Date.now()}`,
+          callback: paystackCallback,
           onClose: () => setPayLoading(false)
         })
         h.openIframe()
-      } catch { setPayLoading(false) }
+      } catch {
+        setPayLoading(false)
+        alert('Could not open payment. Please try again.')
+      }
     }
     s.onerror = () => setPayLoading(false)
     document.head.appendChild(s)
