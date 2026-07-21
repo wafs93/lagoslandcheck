@@ -155,6 +155,7 @@ export default function AgentPage() {
   const [chatInput, setChatInput] = useState('')
   const [chatMessages, setChatMessages] = useState<{role:'user'|'agent';text:string}[]>([])
   const [chatLoading, setChatLoading] = useState(false)
+  const paystackInitInFlight = useRef(false)
   const inputRef = useRef<HTMLTextAreaElement>(null)
 
   const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
@@ -263,12 +264,23 @@ export default function AgentPage() {
       })
       return
     }
+
+    if (paystackInitInFlight.current || payLoading) {
+      console.log('[PAYSTACK_DEBUG][agent:initPaystack] reentry_blocked', { inFlight: paystackInitInFlight.current, payLoading })
+      return
+    }
+    paystackInitInFlight.current = true
     const amountKobo = requestTier === 'verified' ? 3000000 : 500000
     setPayLoading(true)
+    console.log('[PAYSTACK_DEBUG][agent:initPaystack] after_setPayLoading', { amountKobo, requestTier })
     const script = document.createElement('script')
     script.src = 'https://js.paystack.co/v1/inline.js'
+    const existingScript = Boolean(document.querySelector('script[src="https://js.paystack.co/v1/inline.js"]'))
+    console.log('[PAYSTACK_DEBUG][agent:initPaystack] before_append_script', { existingScript })
     script.onload = () => {
+      console.log('[PAYSTACK_DEBUG][agent:initPaystack] script_onload_fired')
       try {
+        console.log('[PAYSTACK_DEBUG][agent:initPaystack] before_setup')
         const handler = (window as any).PaystackPop.setup({
           key: PAYSTACK_KEY,
           email,
@@ -291,14 +303,18 @@ export default function AgentPage() {
               const verifyData = await verifyRes.json()
               if (!verifyRes.ok || !verifyData.success) {
                 setPayLoading(false)
+                paystackInitInFlight.current = false
                 alert(verifyData?.error || 'Payment verification failed. Please contact support.')
                 return
               }
 
               setPaid(true)
               setPayLoading(false)
-            } catch {
+              paystackInitInFlight.current = false
+            } catch (err) {
               setPayLoading(false)
+              paystackInitInFlight.current = false
+              console.error('[PAYSTACK_DEBUG][agent:initPaystack] callback_error', err)
               alert('Could not verify payment. Please contact support with your payment reference.')
               return
             }
@@ -324,15 +340,22 @@ export default function AgentPage() {
                 })
               }).catch(err => console.error('[REPORT_EMAIL_FAIL]', err))
             }
-          },
-          onClose: () => setPayLoading(false)
+          }, 
+          onClose: () => { 
+            setPayLoading(false)
+            paystackInitInFlight.current = false
+          }
         })
+        console.log('[PAYSTACK_DEBUG][agent:initPaystack] after_setup', { hasHandler: Boolean(handler) })
+        console.log('[PAYSTACK_DEBUG][agent:initPaystack] before_openIframe')
         handler.openIframe()
-      } catch {
+      } catch (err) {
         setPayLoading(false)
+        paystackInitInFlight.current = false
+        console.error('[PAYSTACK_DEBUG][agent:initPaystack] setup_error', err)
       }
     }
-    script.onerror = () => setPayLoading(false)
+    script.onerror = (err) => { setPayLoading(false); paystackInitInFlight.current = false; console.error('[PAYSTACK_DEBUG][agent:initPaystack] script_error', err) }
     document.head.appendChild(script)
   }
 
