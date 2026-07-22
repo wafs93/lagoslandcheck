@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { Resend } from 'resend'
 import { verifyAndRecordPayment } from '@/lib/paystack'
 import { ReportTier } from '@/lib/payment-signature'
+import { supabaseAdmin } from '@/lib/supabase'
 
 interface CheckPayload {
   id: string
@@ -20,6 +21,7 @@ interface RequestBody {
   lat: number
   lng: number
   locationLabel: string
+  ownerName?: string
   requestTier?: ReportTier
   overall: 'CLEAR' | 'CAUTION' | 'CRITICAL'
   checks: CheckPayload[]
@@ -179,7 +181,9 @@ function buildEmailHtml(body: RequestBody): string {
 export async function POST(req: NextRequest) {
   try {
     const body: RequestBody = await req.json()
-    const { email, refNo, paymentRef, lat, lng, locationLabel, overall, checks, requestTier = 'instant' } = body
+    const { email, refNo, paymentRef, lat, lng, locationLabel, ownerName, overall, checks, requestTier = 'instant' } = body
+    const safeTier: ReportTier = requestTier === 'verified' ? 'verified' : 'instant'
+    const normalizedOwnerName = typeof ownerName === 'string' ? ownerName.trim() : ''
 
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return NextResponse.json({ error: 'Invalid email' }, { status: 400 })
@@ -207,17 +211,31 @@ export async function POST(req: NextRequest) {
         source: 'send-report',
         refNo,
         locationLabel,
+        ownerName: normalizedOwnerName || null,
         overall,
         checks,
-        requestTier,
+        requestTier: safeTier,
       },
-      requestTier,
+      requestTier: safeTier,
     })
     if (!paymentCheck.ok) {
       return NextResponse.json(
         { success: false, error: paymentCheck.error || 'Payment verification failed' },
         { status: paymentCheck.status }
       )
+    }
+
+    const db = supabaseAdmin()
+    const { error: persistError } = await db
+      .from('verification_reports')
+      .update({
+        request_tier: safeTier,
+        owner_name: normalizedOwnerName || null,
+      })
+      .eq('payment_ref', paymentRef)
+
+    if (persistError) {
+      console.error('[SEND_REPORT_PERSIST_FAIL]', { paymentRef, requestTier: safeTier, error: persistError })
     }
 
     const apiKey = process.env.RESEND_API_KEY
