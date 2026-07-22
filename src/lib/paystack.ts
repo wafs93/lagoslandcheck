@@ -44,14 +44,6 @@ async function verifyPaystackTransaction(paymentRef: string): Promise<VerifyTran
   const secret = getPaystackSecret()
   const verifyUrl = `https://api.paystack.co/transaction/verify/${encodeURIComponent(paymentRef)}`
 
-  console.log('[PAYSTACK_VERIFY_REQUEST]', {
-    paymentRef,
-    secretLength: process.env.PAYSTACK_SECRET_KEY?.length ?? 0,
-    secretStart: secret.slice(0, 7),
-    secretEnd: secret.slice(-4),
-    verifyUrl,
-  })
-
   const res = await fetch(verifyUrl, {
     method: 'GET',
     headers: {
