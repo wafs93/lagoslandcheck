@@ -141,6 +141,7 @@ function StreetViewTab({ url, lat, lng }: { url: string | null; lat?: number; ln
 export default function AgentPage() {
   const [stage, setStage] = useState<Stage>('input')
   const [input, setInput] = useState('')
+  const [ownerName, setOwnerName] = useState('')
   const [processingStep, setProcessingStep] = useState(0)
   const [processingChecks, setProcessingChecks] = useState<string[]>([])
   const [result, setResult] = useState<VerificationResult | null>(null)
@@ -286,6 +287,7 @@ export default function AgentPage() {
 
           sessionStorage.setItem('llc_ref', reference)
           sessionStorage.setItem('llc_email', email)
+          sessionStorage.setItem('llc_owner_name', ownerName)
           if (result) sessionStorage.setItem('llc_result', JSON.stringify(result))
 
           if (result?.lat && result?.lng) {
@@ -297,6 +299,7 @@ export default function AgentPage() {
                 email, refNo, paymentRef: reference,
                 lat: result.lat, lng: result.lng,
                 locationLabel: result.location_label,
+                ownerName,
                 overall: result.overall,
                 checks: result.checks, requestTier,
               })
@@ -386,6 +389,8 @@ export default function AgentPage() {
 
   const rc = result ? RISK_CONFIG[result.overall] : null
   const hasBuilding = result?.checks.find(c => c.id === 'satellite')?.summary?.toLowerCase().includes('building')
+  const tierPriceNaira = requestTier === 'verified' ? 30000 : 5000
+  const tierName = requestTier === 'verified' ? 'Verified Report' : 'Instant Report'
 
   // Count of cautions/criticals — used in the unlock CTA copy
   const cautionCount = result?.checks.filter(c => c.status === 'caution' || c.status === 'critical').length || 0
@@ -447,6 +452,18 @@ export default function AgentPage() {
                 rows={3}
                 style={{ width: '100%', border: '1.5px solid #E5E7EB', borderRadius: 12, padding: '12px 14px', fontSize: 14, fontFamily: "'Syne',sans-serif", color: '#111827', background: '#FAFAFA', lineHeight: 1.6, resize: 'none', display: 'block', transition: 'border-color 0.2s' }}
                 onFocus={e => e.target.style.borderColor = '#0A5C45'} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
+              <div style={{ marginTop: 10 }}>
+                <input
+                  type="text"
+                  value={ownerName}
+                  onChange={e => setOwnerName(e.target.value)}
+                  placeholder="Property owner's full name or company name (optional)"
+                  style={{ width: '100%', border: '1.5px solid #E5E7EB', borderRadius: 12, padding: '11px 14px', fontSize: 14, fontFamily: "'Syne',sans-serif", color: '#111827', background: '#FAFAFA' }}
+                />
+                <p style={{ marginTop: 6, fontSize: 11, color: '#6B7280', lineHeight: 1.6 }}>
+                  Optional but recommended: Lagos court record search is name-based, not address-based.
+                </p>
+              </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, margin: '10px 0' }}>
                 {[
                   { label: '🔗 Maps link', val: 'https://maps.google.com/?q=6.5244,3.3792' },
@@ -640,6 +657,12 @@ export default function AgentPage() {
                 const sc = STATUS_CONFIG[check.status] || STATUS_CONFIG.queued
                 const isOpen = expanded === check.id && paid
                 const checkIcon = CHECKS_CONFIG.find(c => c.id === check.id)?.icon || '🔍'
+                const needsManualCheck = check.id === 'litigation' || check.id === 'luc'
+                const manualCheckNote = needsManualCheck
+                  ? requestTier === 'verified'
+                    ? 'Manual verification pending — results will be added within 24-48 hours.'
+                    : 'Automated check — not independently verified.'
+                  : null
                 return (
                   <div key={check.id} className="card" style={{ overflow: 'hidden', cursor: paid ? 'pointer' : 'default', transition: 'all 0.2s' }}
                     onClick={() => paid && setExpanded(isOpen ? null : check.id)}>
@@ -652,6 +675,9 @@ export default function AgentPage() {
                             <span style={{ fontSize: 9, fontFamily: 'monospace', padding: '2px 8px', borderRadius: 4, background: sc.badge, color: sc.text, fontWeight: 700 }}>{sc.label}</span>
                           </div>
                           <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>{check.summary}</p>
+                          {manualCheckNote && (
+                            <p style={{ fontSize: 11, color: '#92400E', lineHeight: 1.5, marginTop: 4 }}>{manualCheckNote}</p>
+                          )}
                         </div>
                         {!paid ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#9CA3AF', fontSize: 11, fontFamily: 'monospace', flexShrink: 0 }}>
@@ -714,13 +740,37 @@ export default function AgentPage() {
                 ))}
               </div>
 
+              <div style={{ marginBottom: 12 }}>
+                <div style={{ fontSize: 10, fontFamily: 'monospace', color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', marginBottom: 6 }}>
+                  SELECT REPORT TYPE
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => setRequestTier('instant')}
+                    style={{ textAlign: 'left', padding: '10px 11px', borderRadius: 9, border: requestTier === 'instant' ? '1.5px solid #CFAF6E' : '1px solid rgba(255,255,255,0.2)', background: requestTier === 'instant' ? 'rgba(207,175,110,0.16)' : 'rgba(255,255,255,0.07)', color: '#fff', cursor: 'pointer' }}
+                  >
+                    <div style={{ fontSize: 12, fontWeight: 700 }}>Instant Report</div>
+                    <div style={{ fontSize: 11, opacity: 0.85 }}>₦5,000 · Delivered immediately</div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRequestTier('verified')}
+                    style={{ textAlign: 'left', padding: '10px 11px', borderRadius: 9, border: requestTier === 'verified' ? '1.5px solid #CFAF6E' : '1px solid rgba(255,255,255,0.2)', background: requestTier === 'verified' ? 'rgba(207,175,110,0.16)' : 'rgba(255,255,255,0.07)', color: '#fff', cursor: 'pointer' }}
+                  >
+                    <div style={{ fontSize: 12, fontWeight: 700 }}>Verified Report</div>
+                    <div style={{ fontSize: 11, opacity: 0.85 }}>₦30,000 · Manual court + LUC, 24-48h</div>
+                  </button>
+                </div>
+              </div>
+
               {/* Price row */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'rgba(0,0,0,0.25)', borderRadius: 10, marginBottom: 12, border: '1px solid rgba(207,175,110,0.25)' }}>
                 <div>
                   <div style={{ fontSize: 10, fontFamily: 'monospace', color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', marginBottom: 2 }}>ONE-TIME · NO SUBSCRIPTION</div>
                   <div style={{ fontFamily: "'Lora',serif", fontSize: 24, fontWeight: 700, color: '#fff', lineHeight: 1 }}>
-                    ₦5,000
-                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 400, marginLeft: 8 }}>for the complete report</span>
+                    ₦{tierPriceNaira.toLocaleString()}
+                    <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 400, marginLeft: 8 }}>{tierName}</span>
                   </div>
                 </div>
               </div>
@@ -736,7 +786,7 @@ export default function AgentPage() {
 
               <button onClick={initPaystack} disabled={payLoading || !isValidEmail(email)}
                 style={{ width: '100%', padding: '15px 0', background: isValidEmail(email) ? 'linear-gradient(135deg,#CFAF6E,#B8942A)' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 11, fontSize: 15, fontWeight: 700, color: '#fff', cursor: isValidEmail(email) ? 'pointer' : 'not-allowed', fontFamily: "'Syne',sans-serif", boxShadow: isValidEmail(email) ? '0 4px 12px rgba(207,175,110,0.3)' : 'none' }}>
-                {payLoading ? '⏳ Opening payment...' : '🔓 Unlock Full Report — ₦5,000'}
+                {payLoading ? '⏳ Opening payment...' : `🔓 Unlock ${tierName} — ₦${tierPriceNaira.toLocaleString()}`}
               </button>
               <p style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 10, fontFamily: 'monospace' }}>
                 Secure via Paystack · Card · Bank transfer · USSD

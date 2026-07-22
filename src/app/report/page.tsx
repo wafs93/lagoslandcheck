@@ -50,6 +50,22 @@ function generatePDF(checks: Check[], overall: string, lat: string, lng: string,
 }
 
 type ReportTier = 'instant' | 'verified'
+type ManualStatus = 'not_required' | 'pending' | 'completed'
+
+interface ManualStatusPayload {
+  requestTier: ReportTier
+  manualStatus: ManualStatus
+  manualCompletedAt: string | null
+  manualCourtFinding?: string
+  manualLucFinding?: string
+}
+
+function formatManualDate(value: string | null): string {
+  if (!value) return 'recently'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return 'recently'
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
 
 function ReportContent() {
   const params = useSearchParams()
@@ -66,14 +82,22 @@ function ReportContent() {
   const [paidState, setPaidState] = useState(false)
   const [unlockError, setUnlockError] = useState('')
   const [email, setEmail] = useState('')
+  const [ownerName, setOwnerName] = useState('')
   const [payLoading, setPayLoading] = useState(false)
   const [requestTier, setRequestTier] = useState<ReportTier>('instant')
+  const [statusPaymentRef, setStatusPaymentRef] = useState<string>(paymentRefParam || '')
+  const [manualStatusPayload, setManualStatusPayload] = useState<ManualStatusPayload | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [imgZoom, setImgZoom] = useState(false)
 
   const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
 
   useEffect(() => {
+    const storedOwnerName = sessionStorage.getItem('llc_owner_name')
+    if (storedOwnerName) {
+      setOwnerName(storedOwnerName)
+    }
+
     const stored = sessionStorage.getItem('llc_result')
     if (stored) {
       try {
@@ -131,6 +155,7 @@ function ReportContent() {
         const data = await res.json()
         if (res.ok && data.success) {
           setPaidState(true)
+          setStatusPaymentRef(paymentRefParam)
           setUnlockError('')
           return
         }
@@ -140,6 +165,35 @@ function ReportContent() {
       }
     })()
   }, [paymentRefParam, paidState, lat, lng, overall])
+
+  useEffect(() => {
+    if (!paidState || !statusPaymentRef || !lat || !lng) return
+    ;(async () => {
+      try {
+        const res = await fetch(
+          `/api/report-status?paymentRef=${encodeURIComponent(statusPaymentRef)}&lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`
+        )
+        const data = await res.json()
+        if (!res.ok || !data?.success) return
+
+        const payload: ManualStatusPayload = {
+          requestTier: data.requestTier === 'verified' ? 'verified' : 'instant',
+          manualStatus: data.manualStatus === 'completed' ? 'completed' : data.manualStatus === 'pending' ? 'pending' : 'not_required',
+          manualCompletedAt: data.manualCompletedAt || null,
+        }
+
+        if (payload.manualStatus === 'completed') {
+          payload.manualCourtFinding = typeof data.manualCourtFinding === 'string' ? data.manualCourtFinding : ''
+          payload.manualLucFinding = typeof data.manualLucFinding === 'string' ? data.manualLucFinding : ''
+        }
+
+        setRequestTier(payload.requestTier)
+        setManualStatusPayload(payload)
+      } catch {
+        // Keep fallback UI messaging if report-status fetch fails.
+      }
+    })()
+  }, [paidState, statusPaymentRef, lat, lng])
 
   const initPaystack = () => {
     if (!isValidEmail(email) || !PAYSTACK_KEY) return
@@ -170,6 +224,7 @@ function ReportContent() {
             }
 
             setPaidState(true)
+            setStatusPaymentRef(reference)
             setUnlockError('')
             setPayLoading(false)
           } catch {
@@ -184,6 +239,7 @@ function ReportContent() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               email,
+              ownerName,
               refNo,
               paymentRef: reference,
               lat: parseFloat(lat),
@@ -223,6 +279,8 @@ function ReportContent() {
     : null
 
   const cautionCount = checks.filter(c => c.status === 'caution' || c.status === 'critical').length
+  const tierPriceNaira = requestTier === 'verified' ? 30000 : 5000
+  const tierName = requestTier === 'verified' ? 'Verified Report' : 'Instant Report'
 
   if (loading) return (
     <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F8FAF9', fontFamily: "'Syne',sans-serif" }}>
@@ -357,6 +415,23 @@ function ReportContent() {
               {checks.map(check => {
                 const sc = statusConfig[check.status as keyof typeof statusConfig] || statusConfig.queued
                 const isOpen = expanded === check.id && paidState
+                const needsManualCheck = check.id === 'litigation' || check.id === 'luc'
+                const effectiveTier = manualStatusPayload?.requestTier || requestTier
+                const completedAtLabel = formatManualDate(manualStatusPayload?.manualCompletedAt || null)
+
+                let manualCheckNote: string | null = null
+                if (needsManualCheck) {
+                  if (effectiveTier === 'instant') {
+                    manualCheckNote = 'Automated check — not independently verified.'
+                  } else if (manualStatusPayload?.manualStatus === 'completed') {
+                    const finding = check.id === 'litigation'
+                      ? (manualStatusPayload.manualCourtFinding || 'No court finding provided.')
+                      : (manualStatusPayload.manualLucFinding || 'No LUC finding provided.')
+                    manualCheckNote = `Manually verified by LagosLandCheck on ${completedAtLabel}. ${finding}`
+                  } else {
+                    manualCheckNote = 'Manual verification pending — results will be added within 24-48 hours.'
+                  }
+                }
                 return (
                   <div key={check.id} className="card" style={{ overflow: 'hidden', cursor: paidState ? 'pointer' : 'default' }}
                     onClick={() => paidState && setExpanded(isOpen ? null : check.id)}>
@@ -371,6 +446,9 @@ function ReportContent() {
                             <span style={{ fontSize: 9, fontFamily: 'monospace', padding: '2px 8px', borderRadius: 4, background: sc.badge, color: sc.text, fontWeight: 700 }}>{sc.label}</span>
                           </div>
                           <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>{check.summary}</p>
+                          {manualCheckNote && (
+                            <p style={{ fontSize: 11, color: '#92400E', lineHeight: 1.5, marginTop: 4 }}>{manualCheckNote}</p>
+                          )}
                         </div>
                         {!paidState ? (
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#9CA3AF', fontSize: 11, fontFamily: 'monospace', flexShrink: 0 }}>
@@ -432,15 +510,50 @@ function ReportContent() {
               ))}
             </div>
 
+            <div style={{ marginBottom: 12 }}>
+              <div style={{ fontSize: 10, fontFamily: 'monospace', color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', marginBottom: 6 }}>
+                SELECT REPORT TYPE
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <button
+                  type="button"
+                  onClick={() => setRequestTier('instant')}
+                  style={{ textAlign: 'left', padding: '10px 11px', borderRadius: 9, border: requestTier === 'instant' ? '1.5px solid #CFAF6E' : '1px solid rgba(255,255,255,0.2)', background: requestTier === 'instant' ? 'rgba(207,175,110,0.16)' : 'rgba(255,255,255,0.07)', color: '#fff', cursor: 'pointer' }}
+                >
+                  <div style={{ fontSize: 12, fontWeight: 700 }}>Instant Report</div>
+                  <div style={{ fontSize: 11, opacity: 0.85 }}>₦5,000 · Delivered immediately</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRequestTier('verified')}
+                  style={{ textAlign: 'left', padding: '10px 11px', borderRadius: 9, border: requestTier === 'verified' ? '1.5px solid #CFAF6E' : '1px solid rgba(255,255,255,0.2)', background: requestTier === 'verified' ? 'rgba(207,175,110,0.16)' : 'rgba(255,255,255,0.07)', color: '#fff', cursor: 'pointer' }}
+                >
+                  <div style={{ fontSize: 12, fontWeight: 700 }}>Verified Report</div>
+                  <div style={{ fontSize: 11, opacity: 0.85 }}>₦30,000 · Manual court + LUC, 24-48h</div>
+                </button>
+              </div>
+            </div>
+
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'rgba(0,0,0,0.25)', borderRadius: 10, marginBottom: 12, border: '1px solid rgba(207,175,110,0.25)' }}>
               <div>
                 <div style={{ fontSize: 10, fontFamily: 'monospace', color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', marginBottom: 2 }}>ONE-TIME · NO SUBSCRIPTION</div>
                 <div style={{ fontFamily: "'Lora',serif", fontSize: 24, fontWeight: 700, color: '#fff', lineHeight: 1 }}>
-                  ₦5,000
-                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 400, marginLeft: 8 }}>for the complete report</span>
+                  ₦{tierPriceNaira.toLocaleString()}
+                  <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 400, marginLeft: 8 }}>{tierName}</span>
                 </div>
               </div>
             </div>
+
+            <input
+              type="text"
+              value={ownerName}
+              onChange={e => setOwnerName(e.target.value)}
+              placeholder="Property owner's full name or company name (optional)"
+              style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: '1.5px solid rgba(255,255,255,0.25)', background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 14, marginBottom: 6 }}
+            />
+            <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginBottom: 10, lineHeight: 1.6 }}>
+              Optional but recommended: Lagos court record search is name-based, not address-based.
+            </p>
 
             <input type="email" value={email} onChange={e => setEmail(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && initPaystack()}
@@ -448,7 +561,7 @@ function ReportContent() {
               style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${email && !isValidEmail(email) ? 'rgba(239,68,68,0.6)' : 'rgba(255,255,255,0.25)'}`, background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 14, marginBottom: 10 }} />
             <button onClick={initPaystack} disabled={payLoading || !isValidEmail(email)}
               style={{ width: '100%', padding: '15px 0', background: isValidEmail(email) ? 'linear-gradient(135deg,#CFAF6E,#B8942A)' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 11, fontSize: 15, fontWeight: 700, color: '#fff', cursor: isValidEmail(email) ? 'pointer' : 'not-allowed', fontFamily: "'Syne',sans-serif", boxShadow: isValidEmail(email) ? '0 4px 12px rgba(207,175,110,0.3)' : 'none' }}>
-              {payLoading ? '⏳ Opening payment...' : '🔓 Unlock Full Report — ₦5,000'}
+              {payLoading ? '⏳ Opening payment...' : `🔓 Unlock ${tierName} — ₦${tierPriceNaira.toLocaleString()}`}
             </button>
             <p style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 10, fontFamily: 'monospace' }}>Secure via Paystack · Card · Bank transfer · USSD</p>
           </div>
