@@ -149,6 +149,7 @@ export default function AgentPage() {
   const [imgZoom, setImgZoom] = useState(false)
   const [activeTab, setActiveTab] = useState<'satellite' | 'street'>('satellite')
   const [paid, setPaid] = useState(false)
+  const [paidTier, setPaidTier] = useState<ReportTier | null>(null)
   const [email, setEmail] = useState('')
   const [payLoading, setPayLoading] = useState(false)
   const [requestTier, setRequestTier] = useState<ReportTier>('instant')
@@ -275,6 +276,7 @@ export default function AgentPage() {
               return
             }
 
+            setPaidTier(requestTier)
             setPaid(true)
             setPayLoading(false)
             paystackInitInFlight.current = false
@@ -339,6 +341,16 @@ export default function AgentPage() {
     document.head.appendChild(script)
   }
 
+  const startNewCheck = () => {
+    setPaid(false)
+    setPaidTier(null)
+    setRequestTier('instant')
+    sessionStorage.removeItem('llc_ref')
+    sessionStorage.removeItem('llc_email')
+    sessionStorage.removeItem('llc_result')
+    setStage('input')
+  }
+
   const sendChat = async () => {
     if (!chatInput.trim() || chatLoading) return
     const msg = chatInput.trim()
@@ -376,8 +388,10 @@ export default function AgentPage() {
     const lat = result?.lat || 0
     const lng = result?.lng || 0
     const ref = sessionStorage.getItem('llc_ref') || ''
+    const tier = paidTier || requestTier
     const paymentQuery = ref ? `&paymentRef=${encodeURIComponent(ref)}` : ''
-    window.open(`/report?lat=${lat}&lng=${lng}${paymentQuery}`, '_blank')
+    const tierQuery = `&requestTier=${encodeURIComponent(tier)}`
+    window.open(`/report?lat=${lat}&lng=${lng}${paymentQuery}${tierQuery}`, '_blank')
   }
 
   const satelliteUrl = result?.lat && result?.lng
@@ -411,7 +425,7 @@ export default function AgentPage() {
       {/* NAV */}
       <nav style={{ background: '#07382C', padding: '0 1.25rem', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 1px 0 rgba(255,255,255,0.04)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <button onClick={() => stage === 'input' ? window.location.href = '/' : setStage('input')}
+          <button onClick={() => stage === 'input' ? window.location.href = '/' : startNewCheck()}
             style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 7, padding: '5px 12px', color: 'rgba(255,255,255,0.7)', fontSize: 12, cursor: 'pointer' }}>
             ← {stage === 'input' ? 'Home' : 'New check'}
           </button>
@@ -658,8 +672,9 @@ export default function AgentPage() {
                 const isOpen = expanded === check.id && paid
                 const checkIcon = CHECKS_CONFIG.find(c => c.id === check.id)?.icon || '🔍'
                 const needsManualCheck = check.id === 'litigation' || check.id === 'luc'
-                const manualCheckNote = needsManualCheck
-                  ? requestTier === 'verified'
+                const effectivePaidTier = paid ? paidTier : null
+                const manualCheckNote = needsManualCheck && effectivePaidTier
+                  ? effectivePaidTier === 'verified'
                     ? 'Manual verification pending — results will be added within 24-48 hours.'
                     : 'Automated check — not independently verified.'
                   : null

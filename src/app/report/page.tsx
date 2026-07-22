@@ -72,6 +72,7 @@ function ReportContent() {
   const rawLat = params.get('lat')
   const rawLng = params.get('lng')
   const paymentRefParam = params.get('paymentRef')
+  const requestTierParam = params.get('requestTier')
 
   const [lat, setLat] = useState<string>('')
   const [lng, setLng] = useState<string>('')
@@ -85,12 +86,23 @@ function ReportContent() {
   const [ownerName, setOwnerName] = useState('')
   const [payLoading, setPayLoading] = useState(false)
   const [requestTier, setRequestTier] = useState<ReportTier>('instant')
+  const [paidTier, setPaidTier] = useState<ReportTier | null>(null)
   const [statusPaymentRef, setStatusPaymentRef] = useState<string>(paymentRefParam || '')
   const [manualStatusPayload, setManualStatusPayload] = useState<ManualStatusPayload | null>(null)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [imgZoom, setImgZoom] = useState(false)
 
   const isValidEmail = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)
+
+  useEffect(() => {
+    if (requestTierParam === 'verified') {
+      setRequestTier('verified')
+      return
+    }
+    if (requestTierParam === 'instant') {
+      setRequestTier('instant')
+    }
+  }, [requestTierParam])
 
   useEffect(() => {
     const storedOwnerName = sessionStorage.getItem('llc_owner_name')
@@ -150,11 +162,13 @@ function ReportContent() {
             lat: parseFloat(lat),
             lng: parseFloat(lng),
             overall,
+            requestTier: requestTierParam === 'verified' ? 'verified' : 'instant',
           }),
         })
         const data = await res.json()
         if (res.ok && data.success) {
           setPaidState(true)
+          setPaidTier(requestTierParam === 'verified' ? 'verified' : 'instant')
           setStatusPaymentRef(paymentRefParam)
           setUnlockError('')
           return
@@ -164,7 +178,7 @@ function ReportContent() {
         setUnlockError('Could not verify payment reference.')
       }
     })()
-  }, [paymentRefParam, paidState, lat, lng, overall])
+  }, [paymentRefParam, requestTierParam, paidState, lat, lng, overall])
 
   useEffect(() => {
     if (!paidState || !statusPaymentRef || !lat || !lng) return
@@ -188,6 +202,7 @@ function ReportContent() {
         }
 
         setRequestTier(payload.requestTier)
+        setPaidTier(payload.requestTier)
         setManualStatusPayload(payload)
       } catch {
         // Keep fallback UI messaging if report-status fetch fails.
@@ -224,6 +239,7 @@ function ReportContent() {
             }
 
             setPaidState(true)
+            setPaidTier(requestTier)
             setStatusPaymentRef(reference)
             setUnlockError('')
             setPayLoading(false)
@@ -416,19 +432,19 @@ function ReportContent() {
                 const sc = statusConfig[check.status as keyof typeof statusConfig] || statusConfig.queued
                 const isOpen = expanded === check.id && paidState
                 const needsManualCheck = check.id === 'litigation' || check.id === 'luc'
-                const effectiveTier = manualStatusPayload?.requestTier || requestTier
+                const effectiveTier = paidState ? (paidTier || manualStatusPayload?.requestTier || requestTier) : null
                 const completedAtLabel = formatManualDate(manualStatusPayload?.manualCompletedAt || null)
 
                 let manualCheckNote: string | null = null
                 if (needsManualCheck) {
                   if (effectiveTier === 'instant') {
                     manualCheckNote = 'Automated check — not independently verified.'
-                  } else if (manualStatusPayload?.manualStatus === 'completed') {
+                  } else if (effectiveTier === 'verified' && manualStatusPayload?.manualStatus === 'completed') {
                     const finding = check.id === 'litigation'
                       ? (manualStatusPayload.manualCourtFinding || 'No court finding provided.')
                       : (manualStatusPayload.manualLucFinding || 'No LUC finding provided.')
                     manualCheckNote = `Manually verified by LagosLandCheck on ${completedAtLabel}. ${finding}`
-                  } else {
+                  } else if (effectiveTier === 'verified') {
                     manualCheckNote = 'Manual verification pending — results will be added within 24-48 hours.'
                   }
                 }
