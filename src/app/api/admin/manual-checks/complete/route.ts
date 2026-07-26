@@ -61,9 +61,9 @@ export async function POST(req: NextRequest) {
 
     const apiKey = process.env.RESEND_API_KEY
     if (!apiKey) {
-      console.warn('[ADMIN_MANUAL_CHECK_COMPLETE_EMAIL_SKIPPED] Missing RESEND_API_KEY')
+      console.error('[ADMIN_MANUAL_CHECK_COMPLETE_EMAIL_SKIPPED] Missing RESEND_API_KEY', { reportId: data.id })
     } else if (!data.payment_email || !data.payment_ref || typeof data.lat !== 'number' || typeof data.lng !== 'number') {
-      console.warn('[ADMIN_MANUAL_CHECK_COMPLETE_EMAIL_SKIPPED] Missing recipient/report fields', {
+      console.error('[ADMIN_MANUAL_CHECK_COMPLETE_EMAIL_SKIPPED] Missing recipient/report fields', {
         reportId: data.id,
         hasEmail: !!data.payment_email,
         hasPaymentRef: !!data.payment_ref,
