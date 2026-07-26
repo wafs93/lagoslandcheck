@@ -231,6 +231,7 @@ export async function POST(req: NextRequest) {
       .update({
         request_tier: safeTier,
         owner_name: normalizedOwnerName || null,
+        manual_status: safeTier === 'verified' ? 'pending' : 'not_required',
       })
       .eq('payment_ref', paymentRef)
 
