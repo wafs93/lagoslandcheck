@@ -2,7 +2,7 @@
 
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { buildPdfHtml } from '@/lib/pdf-template'
+import { buildPdfHtml, computeDisplayVerdict } from '@/lib/pdf-template'
 import Footer from '@/components/Footer'
 
 interface Check {
@@ -17,6 +17,7 @@ const verdictConfig = {
   CLEAR:    { bg: '#ECFDF5', border: '#6EE7B7', text: '#065F46', label: '✅ All Clear',            sub: 'No major issues found. Continue with standard legal due diligence.' },
   CAUTION:  { bg: '#FFFBEB', border: '#FCD34D', text: '#92400E', label: '⚠️ Proceed with Caution', sub: 'Concerns detected. Do not pay any money before consulting a lawyer.' },
   CRITICAL: { bg: '#FEF2F2', border: '#FCA5A5', text: '#991B1B', label: '🚫 Do Not Proceed',       sub: 'Critical flags found. Strongly advise against proceeding.' },
+  PARTIAL:  { bg: '#F1F5F9', border: '#CBD5E1', text: '#334155', label: '⚪ Partial Assessment',    sub: '' },
 }
 
 const statusConfig = {
@@ -309,13 +310,33 @@ function ReportContent() {
     document.head.appendChild(s)
   }
 
-  const vc = verdictConfig[overall as keyof typeof verdictConfig] || verdictConfig.CAUTION
+  // Verdict is derived only from checks actually visible for the purchased tier —
+  // litigation/LUC only count once manual_status is 'completed', never from the
+  // automated fallback while still pending or entirely locked (Instant tier).
+  const effectiveDisplayTier: ReportTier = paidTier || manualStatusPayload?.requestTier || requestTier
+  const displayVerdict = checks.length > 0
+    ? computeDisplayVerdict(checks, effectiveDisplayTier, {
+        manualStatus: manualStatusPayload?.manualStatus,
+        manualCourtStatus: manualStatusPayload?.manualCourtStatus,
+        manualLucStatus: manualStatusPayload?.manualLucStatus,
+      })
+    : null
+  const vc = displayVerdict ? {
+    ...verdictConfig[displayVerdict.level],
+    sub: displayVerdict.level === 'PARTIAL'
+      ? (displayVerdict.reason === 'verified-pending'
+          ? '4 of 6 checks clear. Manual court and Land Use Charge review is in progress — full verdict will be available once complete.'
+          : '4 of 6 checks clear. Court litigation and Land Use Charge status require the Verified Report for a complete risk verdict.')
+      : verdictConfig[displayVerdict.level].sub,
+  } : verdictConfig.CAUTION
   const hasCoords = lat && lng && lat !== '0' && lng !== '0'
   const satelliteUrl = hasCoords
     ? `https://maps.googleapis.com/maps/api/staticmap?center=${lat},${lng}&zoom=20&size=640x360&maptype=hybrid&key=${GOOGLE_MAPS_KEY}`
     : null
 
-  const cautionCount = checks.filter(c => c.status === 'caution' || c.status === 'critical').length
+  // Concern count among the 4 unlocked automated checks only — never counts a
+  // locked/pending litigation or LUC result the buyer hasn't actually unlocked.
+  const cautionCount = checks.filter(c => (c.id === 'satellite' || c.id === 'gazette' || c.id === 'flood' || c.id === 'fraud') && (c.status === 'caution' || c.status === 'critical')).length
   const tierPriceNaira = requestTier === 'verified' ? 50000 : 5000
   const tierName = requestTier === 'verified' ? 'Verified Report' : 'Instant Report'
 
@@ -401,6 +422,11 @@ function ReportContent() {
                 <p style={{ fontSize: 10, fontFamily: 'monospace', color: vc.text, letterSpacing: '1.5px', opacity: 0.7, marginBottom: 5 }}>OVERALL RISK ASSESSMENT</p>
                 <div style={{ fontFamily: "'Lora',serif", fontSize: 24, fontWeight: 600, color: vc.text, marginBottom: 4 }}>{vc.label}</div>
                 <p style={{ fontSize: 13, color: vc.text, opacity: 0.8, lineHeight: 1.6 }}>{vc.sub}</p>
+                {displayVerdict?.reason === 'instant-locked' && (
+                  <a href="/agent" style={{ fontSize: 11, color: '#0A5C45', fontWeight: 600, textDecoration: 'none', display: 'inline-block', marginTop: 6 }}>
+                    Upgrade to Verified Report →
+                  </a>
+                )}
               </div>
               {hasCoords && (
                 <div style={{ textAlign: 'right' }}>
@@ -412,7 +438,7 @@ function ReportContent() {
             </div>
             <div style={{ marginTop: '1rem', display: 'flex', gap: 4 }}>
               {(['CLEAR','CAUTION','CRITICAL'] as const).map(s => (
-                <div key={s} style={{ flex: 1, height: 5, borderRadius: 3, background: overall === s ? (s==='CLEAR'?'#22C55E':s==='CAUTION'?'#F59E0B':'#EF4444') : '#E5E7EB' }} />
+                <div key={s} style={{ flex: 1, height: 5, borderRadius: 3, background: displayVerdict?.level === s ? (s==='CLEAR'?'#22C55E':s==='CAUTION'?'#F59E0B':'#EF4444') : '#E5E7EB' }} />
               ))}
             </div>
           </div>

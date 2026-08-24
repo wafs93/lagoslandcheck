@@ -2,6 +2,7 @@
 
 import { useState, useRef } from 'react'
 import Footer from '@/components/Footer'
+import { computeDisplayVerdict } from '@/lib/pdf-template'
 
 interface CheckResult {
   id: string
@@ -38,6 +39,7 @@ const RISK_CONFIG = {
   CLEAR:    { bg: '#ECFDF5', border: '#6EE7B7', text: '#065F46', label: '🟢 Low Risk',    sub: 'No major issues found. Continue with standard legal due diligence.' },
   CAUTION:  { bg: '#FFFBEB', border: '#FCD34D', text: '#92400E', label: '🟡 Medium Risk', sub: 'Concerns detected. Do not pay any money before consulting a lawyer.' },
   CRITICAL: { bg: '#FEF2F2', border: '#FCA5A5', text: '#991B1B', label: '🔴 High Risk',   sub: 'Critical flags found. Strongly advise against proceeding.' },
+  PARTIAL:  { bg: '#F1F5F9', border: '#CBD5E1', text: '#334155', label: '⚪ Partial Assessment', sub: '' },
 }
 
 const STATUS_CONFIG = {
@@ -395,13 +397,29 @@ export default function AgentPage() {
     ? `https://maps.googleapis.com/maps/api/streetview?size=640x360&location=${result.lat},${result.lng}&fov=90&pitch=0&key=${GOOGLE_MAPS_KEY}`
     : null
 
-  const rc = result ? RISK_CONFIG[result.overall] : null
+  // Verdict is derived only from checks actually visible for the purchased tier —
+  // agent page never learns whether manual review has completed, so a paid
+  // Verified report always reads as "pending" here (the /report page has the
+  // real manual-status data and resolves this to a full verdict once complete).
+  const effectiveDisplayTier: ReportTier = paidTier || requestTier
+  const displayVerdict = result ? computeDisplayVerdict(result.checks, effectiveDisplayTier) : null
+  const rc = displayVerdict ? {
+    ...RISK_CONFIG[displayVerdict.level],
+    sub: displayVerdict.level === 'PARTIAL'
+      ? (displayVerdict.reason === 'verified-pending'
+          ? '4 of 6 checks clear. Manual court and Land Use Charge review is in progress — full verdict will be available once complete.'
+          : '4 of 6 checks clear. Court litigation and Land Use Charge status require the Verified Report for a complete risk verdict.')
+      : RISK_CONFIG[displayVerdict.level].sub,
+  } : null
   const hasBuilding = result?.checks.find(c => c.id === 'satellite')?.summary?.toLowerCase().includes('building')
   const tierPriceNaira = requestTier === 'verified' ? 50000 : 5000
   const tierName = requestTier === 'verified' ? 'Verified Report' : 'Instant Report'
 
-  // Count of cautions/criticals — used in the unlock CTA copy
-  const cautionCount = result?.checks.filter(c => c.status === 'caution' || c.status === 'critical').length || 0
+  // Count of cautions/criticals among the 4 unlocked automated checks — used
+  // both for the unlock CTA copy and the pre-payment locked summary card, so
+  // it never counts a locked/pending litigation or LUC result the buyer
+  // hasn't actually unlocked.
+  const cautionCount = result?.checks.filter(c => (c.id === 'satellite' || c.id === 'gazette' || c.id === 'flood' || c.id === 'fraud') && (c.status === 'caution' || c.status === 'critical')).length || 0
 
   return (
     <div style={{ fontFamily: "'Syne',sans-serif", background: '#F8FAF9', minHeight: '100vh' }}>
@@ -573,6 +591,11 @@ export default function AgentPage() {
                   <p style={{ fontSize: 10, fontFamily: 'monospace', color: rc.text, letterSpacing: '1.5px', opacity: 0.7, marginBottom: 5 }}>OVERALL RISK ASSESSMENT</p>
                   <div style={{ fontFamily: "'Lora',serif", fontSize: 26, fontWeight: 600, color: rc.text, marginBottom: 4 }}>{rc.label}</div>
                   <p style={{ fontSize: 13, color: rc.text, opacity: 0.8, lineHeight: 1.6, maxWidth: 360 }}>{rc.sub}</p>
+                  {displayVerdict?.reason === 'instant-locked' && (
+                    <a href="/agent" style={{ fontSize: 11, color: '#0A5C45', fontWeight: 600, textDecoration: 'none', display: 'inline-block', marginTop: 6 }}>
+                      Upgrade to Verified Report →
+                    </a>
+                  )}
                 </div>
                 <div style={{ textAlign: 'right' }}>
                   <div style={{ fontSize: 10, fontFamily: 'monospace', color: rc.text, opacity: 0.6, marginBottom: 4 }}>LOCATION</div>
@@ -586,7 +609,7 @@ export default function AgentPage() {
               </div>
               <div style={{ marginTop: '1rem', display: 'flex', gap: 4 }}>
                 {(['CLEAR','CAUTION','CRITICAL'] as const).map(s => (
-                  <div key={s} style={{ flex: 1, height: 5, borderRadius: 3, background: result.overall === s ? (s === 'CLEAR' ? '#22C55E' : s === 'CAUTION' ? '#F59E0B' : '#EF4444') : '#E5E7EB' }} />
+                  <div key={s} style={{ flex: 1, height: 5, borderRadius: 3, background: displayVerdict?.level === s ? (s === 'CLEAR' ? '#22C55E' : s === 'CAUTION' ? '#F59E0B' : '#EF4444') : '#E5E7EB' }} />
                 ))}
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>

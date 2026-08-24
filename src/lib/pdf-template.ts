@@ -98,6 +98,51 @@ export function applyTierVisibility(checks: Check[], args: Omit<PdfArgs, 'checks
   })
 }
 
+const AUTOMATED_CHECK_IDS = ['satellite', 'gazette', 'flood', 'fraud']
+
+export type DisplayVerdictLevel = 'CLEAR' | 'CAUTION' | 'CRITICAL' | 'PARTIAL'
+export type DisplayVerdictReason = 'instant-locked' | 'verified-pending' | null
+
+export interface DisplayVerdict {
+  level: DisplayVerdictLevel
+  reason: DisplayVerdictReason
+}
+
+// The single source of truth for the top-level risk verdict shown across the
+// on-screen report and the PDF. Litigation/LUC results must never surface
+// through this verdict unless they're actually visible on the report the
+// buyer paid for — an Instant Report's verdict is derived only from the 4
+// unlocked automated checks; a Verified Report's verdict only counts
+// litigation/LUC once manual review is completed (never the automated
+// fallback while manual_status is still pending).
+export function computeDisplayVerdict(
+  checks: Check[],
+  tier: ReportTier,
+  manual?: { manualStatus?: ManualStatus; manualCourtStatus?: string; manualLucStatus?: string }
+): DisplayVerdict {
+  const automatedChecks = checks.filter(c => AUTOMATED_CHECK_IDS.includes(c.id))
+  const automatedHasCritical = automatedChecks.some(c => c.status === 'critical')
+  const automatedHasCaution = automatedChecks.some(c => c.status === 'caution')
+
+  if (automatedHasCritical) return { level: 'CRITICAL', reason: null }
+  if (automatedHasCaution) return { level: 'CAUTION', reason: null }
+
+  if (tier === 'instant') {
+    return { level: 'PARTIAL', reason: 'instant-locked' }
+  }
+
+  if (manual?.manualStatus !== 'completed') {
+    return { level: 'PARTIAL', reason: 'verified-pending' }
+  }
+
+  const manualHasCritical = manual.manualCourtStatus === 'critical' || manual.manualLucStatus === 'critical'
+  const manualHasCaution = manual.manualCourtStatus === 'caution' || manual.manualLucStatus === 'caution'
+
+  if (manualHasCritical) return { level: 'CRITICAL', reason: null }
+  if (manualHasCaution) return { level: 'CAUTION', reason: null }
+  return { level: 'CLEAR', reason: null }
+}
+
 // SVG icons for each check — minimal outlined style
 const CHECK_ICONS: Record<string, string> = {
   satellite: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 7L17 3M17 3L21 7M17 3V13"/><path d="M3 17L7 21M7 21L11 17M7 21V11"/><circle cx="12" cy="12" r="3"/></svg>`,
@@ -116,7 +161,7 @@ const SHIELD_SVG = (color: string, fill: string) =>
   </svg>`
 
 export function buildPdfHtml(args: PdfArgs): string {
-  const { overall, lat, lng, locationLabel, refNo } = args
+  const { lat, lng, locationLabel, refNo } = args
   const tier: ReportTier = args.tier === 'verified' ? 'verified' : 'instant'
   const checks = applyTierVisibility(args.checks, args)
   const reportCostNaira = REPORT_PRICE_KOBO[tier] / 100
@@ -131,12 +176,25 @@ export function buildPdfHtml(args: PdfArgs): string {
     ? `https://maps.googleapis.com/maps/api/staticmap?center=${latNum},${lngNum}&zoom=20&size=720x420&maptype=hybrid&markers=color:red%7C${latNum},${lngNum}&key=${apiKey}`
     : ''
 
+  const displayVerdict = computeDisplayVerdict(checks, tier, {
+    manualStatus: args.manualStatus,
+    manualCourtStatus: args.manualCourtStatus,
+    manualLucStatus: args.manualLucStatus,
+  })
+
   const verdictMap = {
     CLEAR: { label: 'CLEARED', sub: 'No major issues detected across the six automated checks.', color: '#15803D', bg: '#DCFCE7', border: '#86EFAC' },
     CAUTION: { label: 'PROCEED WITH CAUTION', sub: 'Concerns detected. Do not transfer funds before legal verification is complete.', color: '#B45309', bg: '#FEF3C7', border: '#FCD34D' },
     CRITICAL: { label: 'DO NOT PROCEED', sub: 'Critical risk flags identified. Strongly advise against this transaction without full legal review.', color: '#991B1B', bg: '#FEE2E2', border: '#FCA5A5' },
+    PARTIAL: {
+      label: 'PARTIAL ASSESSMENT',
+      sub: displayVerdict.reason === 'verified-pending'
+        ? '4 of 6 checks clear. Manual court and Land Use Charge review is in progress — full verdict will be available once complete.'
+        : '4 of 6 checks clear. Court litigation and Land Use Charge status require the Verified Report for a complete risk verdict.',
+      color: '#334155', bg: '#F1F5F9', border: '#CBD5E1',
+    },
   }
-  const v = verdictMap[overall as keyof typeof verdictMap] || verdictMap.CAUTION
+  const v = verdictMap[displayVerdict.level]
 
   const cautionCount = checks.filter(c => c.status === 'caution' || c.status === 'critical').length
   const clearCount = checks.filter(c => c.status === 'clear').length
@@ -545,13 +603,13 @@ export function buildPdfHtml(args: PdfArgs): string {
       <div class="vb-sub">${v.sub}</div>
     </div>
     <div class="vb-meter">
-      <div class="vb-seg" style="background:${overall === 'CLEAR' ? '#15803D' : '#E5E7EB'}"></div>
-      <div class="vb-seg" style="background:${overall === 'CAUTION' ? '#B45309' : '#E5E7EB'}"></div>
-      <div class="vb-seg" style="background:${overall === 'CRITICAL' ? '#991B1B' : '#E5E7EB'}"></div>
+      <div class="vb-seg" style="background:${displayVerdict.level === 'CLEAR' ? '#15803D' : '#E5E7EB'}"></div>
+      <div class="vb-seg" style="background:${displayVerdict.level === 'CAUTION' ? '#B45309' : '#E5E7EB'}"></div>
+      <div class="vb-seg" style="background:${displayVerdict.level === 'CRITICAL' ? '#991B1B' : '#E5E7EB'}"></div>
     </div>
   </div>
 
-  ${overall !== 'CLEAR' ? `
+  ${displayVerdict.level !== 'CLEAR' ? `
   <div class="alert">
     <div class="alert-icon">⚠</div>
     <div class="alert-body">
@@ -563,11 +621,15 @@ export function buildPdfHtml(args: PdfArgs): string {
   <div class="section-tag">ANALYST SUMMARY</div>
   <div class="summary-block">
     <div class="summary-text">
-      ${overall === 'CLEAR'
+      ${displayVerdict.level === 'CLEAR'
         ? `Our six automated checks returned no major flags for this coordinate. No gazette acquisitions, court records, fraud zone alerts, or flood-risk classifications matched. The satellite analysis is consistent with stated land use.<br><br>This pre-screening result is encouraging but does not replace a physical Land Registry search. Instruct a licensed Lagos property lawyer to conduct a formal title search before any payment.`
-        : overall === 'CAUTION'
+        : displayVerdict.level === 'CAUTION'
           ? `One or more automated checks have returned cautionary findings on this parcel. This may indicate proximity to a gazette acquisition corridor, a Land Use Charge gap, prior litigation in the area, or known community disputes.<br><br><strong>Do not transfer funds before consulting a licensed Lagos property lawyer.</strong> Use the findings in this report as a starting point for deeper due diligence.`
-          : `This parcel has triggered critical risk flags during automated screening. Proceeding without full legal investigation could result in total loss of investment.<br><br><strong>Do not proceed without engaging a licensed Lagos property lawyer immediately.</strong>`
+          : displayVerdict.level === 'CRITICAL'
+            ? `This parcel has triggered critical risk flags during automated screening. Proceeding without full legal investigation could result in total loss of investment.<br><br><strong>Do not proceed without engaging a licensed Lagos property lawyer immediately.</strong>`
+            : displayVerdict.reason === 'verified-pending'
+              ? `The four automated checks in this report — satellite imagery, gazette and government acquisition, flood and drainage risk, and fraud zone alerts — returned no flags for this coordinate. Manual court litigation and Land Use Charge verification is still in progress and will be added to this report within 24-48 hours.<br><br>A complete risk verdict will be available once manual verification is complete. Instruct a licensed Lagos property lawyer to conduct a formal title search before any payment.`
+              : `The four automated checks included in this Instant Report — satellite imagery, gazette and government acquisition, flood and drainage risk, and fraud zone alerts — returned no flags for this coordinate. Court litigation search and Land Use Charge status are not included in this tier and require the Verified Report for a complete risk verdict.<br><br>This partial result is encouraging but is not a full assessment. Instruct a licensed Lagos property lawyer to conduct a formal title search before any payment.`
       }
     </div>
   </div>

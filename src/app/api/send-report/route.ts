@@ -5,7 +5,7 @@ import { Resend } from 'resend'
 import { verifyAndRecordPayment } from '@/lib/paystack'
 import { ReportTier } from '@/lib/payment-signature'
 import { supabaseAdmin } from '@/lib/supabase'
-import { applyTierVisibility } from '@/lib/pdf-template'
+import { applyTierVisibility, computeDisplayVerdict } from '@/lib/pdf-template'
 
 interface CheckPayload {
   id: string
@@ -47,6 +47,10 @@ const VERDICT_CONFIG = {
   CLEAR: { label: 'CLEARED', color: '#15803D', bg: '#DCFCE7', sub: 'No major issues detected across the six automated checks.' },
   CAUTION: { label: 'PROCEED WITH CAUTION', color: '#B45309', bg: '#FEF3C7', sub: 'Concerns detected. Do not transfer funds before legal verification is complete.' },
   CRITICAL: { label: 'DO NOT PROCEED', color: '#991B1B', bg: '#FEE2E2', sub: 'Critical risk flags identified. Strongly advise against this transaction without full legal review.' },
+  PARTIAL: {
+    label: 'PARTIAL ASSESSMENT', color: '#334155', bg: '#F1F5F9',
+    sub: '4 of 6 checks clear. Court litigation and Land Use Charge status require the Verified Report for a complete risk verdict.',
+  },
 }
 
 function escapeHtml(s: string): string {
@@ -59,11 +63,19 @@ function escapeHtml(s: string): string {
 }
 
 function buildEmailHtml(body: RequestBody): string {
-  const { refNo, paymentRef, locationLabel, lat, lng, overall } = body
+  const { refNo, paymentRef, locationLabel, lat, lng } = body
   const safeTier: ReportTier = body.requestTier === 'verified' ? 'verified' : 'instant'
   // Manual review is never complete at send time — this email fires immediately after payment.
   const checks = applyTierVisibility(body.checks, { tier: safeTier, manualStatus: 'pending' })
-  const v = VERDICT_CONFIG[overall]
+  const displayVerdict = computeDisplayVerdict(body.checks, safeTier, { manualStatus: 'pending' })
+  const v = displayVerdict.level === 'PARTIAL'
+    ? {
+        ...VERDICT_CONFIG.PARTIAL,
+        sub: displayVerdict.reason === 'verified-pending'
+          ? '4 of 6 checks clear. Manual court and Land Use Charge review is in progress — full verdict will be available once complete.'
+          : VERDICT_CONFIG.PARTIAL.sub,
+      }
+    : VERDICT_CONFIG[displayVerdict.level]
   const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
   const deepLink = `${SITE_URL}/report?lat=${lat}&lng=${lng}&paymentRef=${encodeURIComponent(paymentRef)}&ref=${refNo}`
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
