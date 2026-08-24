@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
     const db = supabaseAdmin()
     const { data, error } = await db
       .from('verification_reports')
-      .select('lat, lng, request_tier, manual_status, manual_court_finding, manual_luc_finding, manual_completed_at')
+      .select('lat, lng, request_tier, manual_status, manual_court_finding, manual_luc_finding, manual_court_status, manual_luc_status, manual_completed_at')
       .eq('payment_ref', paymentRef)
       .maybeSingle()
 
@@ -65,6 +65,8 @@ export async function GET(req: NextRequest) {
         manualCompletedAt: data.manual_completed_at || null,
         manualCourtFinding: data.manual_court_finding || '',
         manualLucFinding: data.manual_luc_finding || '',
+        manualCourtStatus: data.manual_court_status || '',
+        manualLucStatus: data.manual_luc_status || '',
       })
     }
 

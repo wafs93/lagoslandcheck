@@ -927,7 +927,7 @@ export default function Home() {
               Pre-screening only — not a substitute for legal due diligence by a licensed Lagos property lawyer.
             </p>
             <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace' }}>
-              Designed by <a href="https://wafsdesign.com" target="_blank" rel="noopener noreferrer" style={{ color: '#CFAF6E', textDecoration: 'none', fontWeight: 600 }}>WafsDesign</a>
+              Designed by <a href="https://lagoslandcheck.com" target="_blank" rel="noopener noreferrer" style={{ color: '#CFAF6E', textDecoration: 'none', fontWeight: 600 }}>Wafs Tech</a>
             </p>
           </div>
         </div>

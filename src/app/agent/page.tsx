@@ -46,18 +46,12 @@ const STATUS_CONFIG = {
   critical: { color: '#EF4444', bg: '#FEF2F2', badge: '#FEE2E2', text: '#991B1B', label: 'HIGH RISK' },
   running:  { color: '#60A5FA', bg: '#EFF6FF', badge: '#DBEAFE', text: '#1D4ED8', label: 'CHECKING' },
   queued:   { color: '#D1D5DB', bg: '#F9FAFB', badge: '#F3F4F6', text: '#6B7280', label: 'QUEUED' },
+  locked:   { color: '#9CA3AF', bg: '#F3F4F6', badge: '#E5E7EB', text: '#4B5563', label: 'LOCKED' },
+  pending:  { color: '#60A5FA', bg: '#EFF6FF', badge: '#DBEAFE', text: '#1D4ED8', label: 'PENDING' },
 }
 
 const PAYSTACK_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || ''
 const GOOGLE_MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''
-
-// First sentence of details, used as teaser on locked cards
-function teaser(details: string, status: string): string {
-  if (!details) return status === 'clear' ? 'No issues detected on this check.' : 'Findings available — unlock to read.'
-  const firstSentence = details.split(/[.!?]/)[0]
-  if (firstSentence.length > 110) return firstSentence.slice(0, 107) + '...'
-  return firstSentence + '.'
-}
 
 function StreetViewTab({ url, lat, lng }: { url: string | null; lat?: number; lng?: number }) {
   const [status, setStatus] = useState<'loading' | 'ok' | 'error'>('loading')
@@ -248,7 +242,7 @@ export default function AgentPage() {
     if (paystackInitInFlight.current || payLoading) return
     paystackInitInFlight.current = true
 
-    const amountKobo = requestTier === 'verified' ? 3000000 : 500000
+    const amountKobo = requestTier === 'verified' ? 5000000 : 500000
     setPayLoading(true)
 
     const script = document.createElement('script')
@@ -403,7 +397,7 @@ export default function AgentPage() {
 
   const rc = result ? RISK_CONFIG[result.overall] : null
   const hasBuilding = result?.checks.find(c => c.id === 'satellite')?.summary?.toLowerCase().includes('building')
-  const tierPriceNaira = requestTier === 'verified' ? 30000 : 5000
+  const tierPriceNaira = requestTier === 'verified' ? 50000 : 5000
   const tierName = requestTier === 'verified' ? 'Verified Report' : 'Instant Report'
 
   // Count of cautions/criticals — used in the unlock CTA copy
@@ -572,34 +566,52 @@ export default function AgentPage() {
         <div style={{ maxWidth: 660, margin: '0 auto', padding: '1.25rem 1rem 4rem' }}>
 
           {/* Risk Score */}
-          <div className="appear card" style={{ background: rc.bg, border: `1px solid ${rc.border}`, marginBottom: '1rem', padding: '1.25rem 1.5rem' }}>
-            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-              <div>
-                <p style={{ fontSize: 10, fontFamily: 'monospace', color: rc.text, letterSpacing: '1.5px', opacity: 0.7, marginBottom: 5 }}>OVERALL RISK ASSESSMENT</p>
-                <div style={{ fontFamily: "'Lora',serif", fontSize: 26, fontWeight: 600, color: rc.text, marginBottom: 4 }}>{rc.label}</div>
-                <p style={{ fontSize: 13, color: rc.text, opacity: 0.8, lineHeight: 1.6, maxWidth: 360 }}>{rc.sub}</p>
+          {paid ? (
+            <div className="appear card" style={{ background: rc.bg, border: `1px solid ${rc.border}`, marginBottom: '1rem', padding: '1.25rem 1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                <div>
+                  <p style={{ fontSize: 10, fontFamily: 'monospace', color: rc.text, letterSpacing: '1.5px', opacity: 0.7, marginBottom: 5 }}>OVERALL RISK ASSESSMENT</p>
+                  <div style={{ fontFamily: "'Lora',serif", fontSize: 26, fontWeight: 600, color: rc.text, marginBottom: 4 }}>{rc.label}</div>
+                  <p style={{ fontSize: 13, color: rc.text, opacity: 0.8, lineHeight: 1.6, maxWidth: 360 }}>{rc.sub}</p>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontSize: 10, fontFamily: 'monospace', color: rc.text, opacity: 0.6, marginBottom: 4 }}>LOCATION</div>
+                  <div style={{ fontSize: 12, color: rc.text, fontWeight: 500, maxWidth: 200, lineHeight: 1.4 }}>{result.location_label}</div>
+                  {result.lat && result.lng && (
+                    <div style={{ fontSize: 10, fontFamily: 'monospace', color: rc.text, opacity: 0.5, marginTop: 4 }}>
+                      {result.lat.toFixed(4)}°N, {result.lng.toFixed(4)}°E
+                    </div>
+                  )}
+                </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: 10, fontFamily: 'monospace', color: rc.text, opacity: 0.6, marginBottom: 4 }}>LOCATION</div>
-                <div style={{ fontSize: 12, color: rc.text, fontWeight: 500, maxWidth: 200, lineHeight: 1.4 }}>{result.location_label}</div>
-                {result.lat && result.lng && (
-                  <div style={{ fontSize: 10, fontFamily: 'monospace', color: rc.text, opacity: 0.5, marginTop: 4 }}>
-                    {result.lat.toFixed(4)}°N, {result.lng.toFixed(4)}°E
+              <div style={{ marginTop: '1rem', display: 'flex', gap: 4 }}>
+                {(['CLEAR','CAUTION','CRITICAL'] as const).map(s => (
+                  <div key={s} style={{ flex: 1, height: 5, borderRadius: 3, background: result.overall === s ? (s === 'CLEAR' ? '#22C55E' : s === 'CAUTION' ? '#F59E0B' : '#EF4444') : '#E5E7EB' }} />
+                ))}
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
+                {['Low Risk', 'Medium Risk', 'High Risk'].map(l => (
+                  <span key={l} style={{ fontSize: 9, color: rc.text, opacity: 0.5, fontFamily: 'monospace' }}>{l}</span>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="appear card" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', marginBottom: '1rem', padding: '1.25rem 1.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
+                <div>
+                  <p style={{ fontSize: 10, fontFamily: 'monospace', color: '#6B7280', letterSpacing: '1.5px', marginBottom: 5 }}>VERIFICATION SUMMARY</p>
+                  <div style={{ fontFamily: "'Lora',serif", fontSize: 20, fontWeight: 600, color: '#111827' }}>
+                    6 checks completed — {cautionCount === 0 ? 'no concerns flagged' : `${cautionCount} concern${cautionCount === 1 ? '' : 's'} flagged`}
                   </div>
-                )}
+                  <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 6 }}>Unlock the full report to see the risk verdict and detailed findings.</p>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#9CA3AF', fontSize: 11, fontFamily: 'monospace', flexShrink: 0 }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  <span>LOCKED</span>
+                </div>
               </div>
             </div>
-            <div style={{ marginTop: '1rem', display: 'flex', gap: 4 }}>
-              {(['CLEAR','CAUTION','CRITICAL'] as const).map(s => (
-                <div key={s} style={{ flex: 1, height: 5, borderRadius: 3, background: result.overall === s ? (s === 'CLEAR' ? '#22C55E' : s === 'CAUTION' ? '#F59E0B' : '#EF4444') : '#E5E7EB' }} />
-              ))}
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-              {['Low Risk', 'Medium Risk', 'High Risk'].map(l => (
-                <span key={l} style={{ fontSize: 9, color: rc.text, opacity: 0.5, fontFamily: 'monospace' }}>{l}</span>
-              ))}
-            </div>
-          </div>
+          )}
 
           {/* Image Viewer */}
           {(satelliteUrl || streetViewUrl) && (
@@ -628,7 +640,7 @@ export default function AgentPage() {
                     <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: 'monospace' }}>
                       🛰️ Tap to zoom · AI analysed · zoom 20
                     </div>
-                    {hasBuilding && (
+                    {hasBuilding && paid && (
                       <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.92)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: 'monospace', fontWeight: 700 }}>
                         ⚠️ BUILDING DETECTED
                       </div>
@@ -668,30 +680,59 @@ export default function AgentPage() {
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {result.checks.map(check => {
-                const sc = STATUS_CONFIG[check.status] || STATUS_CONFIG.queued
-                const isOpen = expanded === check.id && paid
                 const checkIcon = CHECKS_CONFIG.find(c => c.id === check.id)?.icon || '🔍'
                 const needsManualCheck = check.id === 'litigation' || check.id === 'luc'
                 const effectivePaidTier = paid ? paidTier : null
-                const manualCheckNote = needsManualCheck && effectivePaidTier
-                  ? effectivePaidTier === 'verified'
-                    ? 'Manual verification pending — results will be added within 24-48 hours.'
-                    : 'Automated check — not independently verified.'
-                  : null
+
+                let displayStatus: keyof typeof STATUS_CONFIG = check.status
+                let displaySummary = check.summary
+                let displayDetails = check.details
+                let isLockedCard = false
+
+                if (needsManualCheck && effectivePaidTier === 'instant') {
+                  isLockedCard = true
+                  displayStatus = 'locked'
+                  displaySummary = ''
+                  displayDetails = ''
+                } else if (needsManualCheck && effectivePaidTier === 'verified') {
+                  displayStatus = 'pending'
+                  displaySummary = 'Manual verification pending — results will be added within 24-48 hours.'
+                  displayDetails = ''
+                }
+
+                const sc = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.queued
+                const isOpen = expanded === check.id && paid
+                const iconBg = paid ? sc.bg : '#F3F4F6'
                 return (
-                  <div key={check.id} className="card" style={{ overflow: 'hidden', cursor: paid ? 'pointer' : 'default', transition: 'all 0.2s' }}
-                    onClick={() => paid && setExpanded(isOpen ? null : check.id)}>
+                  <div key={check.id} className="card" style={{ overflow: 'hidden', cursor: paid && !isLockedCard ? 'pointer' : 'default', transition: 'all 0.2s' }}
+                    onClick={() => paid && !isLockedCard && setExpanded(isOpen ? null : check.id)}>
                     <div style={{ padding: '12px 16px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 38, height: 38, borderRadius: 10, background: sc.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>{checkIcon}</div>
+                        <div style={{ width: 38, height: 38, borderRadius: 10, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>{checkIcon}</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3, flexWrap: 'wrap' }}>
                             <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{check.name}</span>
-                            <span style={{ fontSize: 9, fontFamily: 'monospace', padding: '2px 8px', borderRadius: 4, background: sc.badge, color: sc.text, fontWeight: 700 }}>{sc.label}</span>
+                            {paid && (
+                              <span style={{ fontSize: 9, fontFamily: 'monospace', padding: '2px 8px', borderRadius: 4, background: sc.badge, color: sc.text, fontWeight: 700 }}>{sc.label}</span>
+                            )}
                           </div>
-                          <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>{check.summary}</p>
-                          {manualCheckNote && (
-                            <p style={{ fontSize: 11, color: '#92400E', lineHeight: 1.5, marginTop: 4 }}>{manualCheckNote}</p>
+                          {paid && (
+                            isLockedCard ? (
+                              <>
+                                <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>
+                                  Included in the Verified Report — requires manual registry search.
+                                </p>
+                                <a
+                                  href="/agent"
+                                  onClick={e => e.stopPropagation()}
+                                  style={{ fontSize: 11, color: '#0A5C45', fontWeight: 600, textDecoration: 'none', display: 'inline-block', marginTop: 4 }}
+                                >
+                                  Upgrade to Verified Report →
+                                </a>
+                              </>
+                            ) : (
+                              <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>{displaySummary}</p>
+                            )
                           )}
                         </div>
                         {!paid ? (
@@ -703,17 +744,9 @@ export default function AgentPage() {
                           <div style={{ width: 8, height: 8, borderRadius: '50%', background: sc.color, flexShrink: 0 }} />
                         )}
                       </div>
-                      {isOpen && paid && check.details && (
+                      {isOpen && paid && !isLockedCard && displayDetails && (
                         <div style={{ marginTop: 10, paddingTop: 10, borderTop: '0.5px solid #F3F4F6' }}>
-                          <p style={{ fontSize: 12, color: '#374151', lineHeight: 1.75 }}>{check.details}</p>
-                        </div>
-                      )}
-                      {!paid && check.details && (
-                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '0.5px dashed #E5E7EB' }}>
-                          <p style={{ fontSize: 11, color: '#9CA3AF', lineHeight: 1.6, fontStyle: 'italic' }}>
-                            <span style={{ color: '#6B7280', fontWeight: 600, fontStyle: 'normal' }}>Preview: </span>
-                            {teaser(check.details, check.status)}
-                          </p>
+                          <p style={{ fontSize: 12, color: '#374151', lineHeight: 1.75 }}>{displayDetails}</p>
                         </div>
                       )}
                     </div>
@@ -774,7 +807,7 @@ export default function AgentPage() {
                     style={{ textAlign: 'left', padding: '10px 11px', borderRadius: 9, border: requestTier === 'verified' ? '1.5px solid #CFAF6E' : '1px solid rgba(255,255,255,0.2)', background: requestTier === 'verified' ? 'rgba(207,175,110,0.16)' : 'rgba(255,255,255,0.07)', color: '#fff', cursor: 'pointer' }}
                   >
                     <div style={{ fontSize: 12, fontWeight: 700 }}>Verified Report</div>
-                    <div style={{ fontSize: 11, opacity: 0.85 }}>₦30,000 · Manual court + LUC, 24-48h</div>
+                    <div style={{ fontSize: 11, opacity: 0.85 }}>₦50,000 · Manual court + LUC, 24-48h</div>
                   </button>
                 </div>
               </div>

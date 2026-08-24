@@ -11,13 +11,17 @@
  * - Typography: tighter line heights throughout
  */
 
-interface Check {
+import { REPORT_PRICE_KOBO, ReportTier } from './payment-signature'
+
+export interface Check {
   id: string
   name: string
   status: string
   summary: string
   details: string
 }
+
+export type ManualStatus = 'not_required' | 'pending' | 'completed'
 
 interface PdfArgs {
   checks: Check[]
@@ -26,18 +30,72 @@ interface PdfArgs {
   lng: string | number
   locationLabel: string
   refNo?: string
+  tier?: ReportTier
+  manualStatus?: ManualStatus
+  manualCourtFinding?: string
+  manualLucFinding?: string
+  manualCourtStatus?: string
+  manualLucStatus?: string
+  manualCompletedAt?: string | null
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  clear: 'CLEAR', caution: 'CAUTION', critical: 'HIGH RISK',
+  clear: 'CLEAR', caution: 'CAUTION', critical: 'HIGH RISK', locked: 'LOCKED', pending: 'PENDING',
 }
 
 const STATUS_COLOR: Record<string, string> = {
-  clear: '#15803D', caution: '#B45309', critical: '#991B1B',
+  clear: '#15803D', caution: '#B45309', critical: '#991B1B', locked: '#6B7280', pending: '#1D4ED8',
 }
 
 const STATUS_BG: Record<string, string> = {
-  clear: '#DCFCE7', caution: '#FEF3C7', critical: '#FEE2E2',
+  clear: '#DCFCE7', caution: '#FEF3C7', critical: '#FEE2E2', locked: '#F3F4F6', pending: '#DBEAFE',
+}
+
+function formatManualDate(value: string | null | undefined): string {
+  if (!value) return 'recently'
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return 'recently'
+  return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+// Applies the same tier-visibility rules as the on-screen report: litigation/LUC
+// never show an automated CLEAR/CAUTION result — instant tier renders them as
+// locked, verified tier sources them from the manual review pipeline.
+export function applyTierVisibility(checks: Check[], args: Omit<PdfArgs, 'checks' | 'overall' | 'lat' | 'lng' | 'locationLabel'>): Check[] {
+  const tier: ReportTier = args.tier === 'verified' ? 'verified' : 'instant'
+  return checks.map(c => {
+    const needsManualCheck = c.id === 'litigation' || c.id === 'luc'
+    if (!needsManualCheck) return c
+
+    if (tier === 'instant') {
+      return {
+        ...c,
+        status: 'locked',
+        summary: 'Included in the Verified Report — requires manual registry search.',
+        details: '',
+      }
+    }
+
+    if (args.manualStatus === 'completed') {
+      const manualStatusValue = c.id === 'litigation' ? args.manualCourtStatus : args.manualLucStatus
+      const finding = c.id === 'litigation'
+        ? (args.manualCourtFinding || 'No court finding provided.')
+        : (args.manualLucFinding || 'No LUC finding provided.')
+      return {
+        ...c,
+        status: manualStatusValue || 'caution',
+        summary: `Manually verified by LagosLandCheck on ${formatManualDate(args.manualCompletedAt)}.`,
+        details: finding,
+      }
+    }
+
+    return {
+      ...c,
+      status: 'pending',
+      summary: 'Manual verification pending — results will be added within 24-48 hours.',
+      details: '',
+    }
+  })
 }
 
 // SVG icons for each check — minimal outlined style
@@ -57,7 +115,11 @@ const SHIELD_SVG = (color: string, fill: string) =>
     <path d="M13 22 L19.5 29 L31 16" stroke="${color}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
   </svg>`
 
-export function buildPdfHtml({ checks, overall, lat, lng, locationLabel, refNo }: PdfArgs): string {
+export function buildPdfHtml(args: PdfArgs): string {
+  const { overall, lat, lng, locationLabel, refNo } = args
+  const tier: ReportTier = args.tier === 'verified' ? 'verified' : 'instant'
+  const checks = applyTierVisibility(args.checks, args)
+  const reportCostNaira = REPORT_PRICE_KOBO[tier] / 100
   const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()
   const time = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false })
   const ref = refNo || `LLC-${Date.now().toString(36).toUpperCase()}`
@@ -412,7 +474,7 @@ export function buildPdfHtml({ checks, overall, lat, lng, locationLabel, refNo }
         <div class="stat-label">FLAGGED</div>
       </div>
       <div class="stat">
-        <div class="stat-n">₦5,000</div>
+        <div class="stat-n">₦${reportCostNaira.toLocaleString()}</div>
         <div class="stat-label">REPORT COST</div>
       </div>
     </div>

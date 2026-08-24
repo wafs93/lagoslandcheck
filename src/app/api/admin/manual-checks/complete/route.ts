@@ -8,10 +8,15 @@ import { requireAdminAuth } from '@/lib/admin-auth'
 const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'LagosLandCheck <support@lagoslandcheck.com>'
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://lagoslandcheck.com'
 
+type ManualCheckStatus = 'clear' | 'caution' | 'critical'
+const VALID_STATUSES: ManualCheckStatus[] = ['clear', 'caution', 'critical']
+
 interface CompleteBody {
   reportId: string
   manualCourtFinding?: string
   manualLucFinding?: string
+  manualCourtStatus?: string
+  manualLucStatus?: string
   completedBy?: string
 }
 
@@ -26,6 +31,8 @@ export async function POST(req: NextRequest) {
     const reportId = typeof body.reportId === 'string' ? body.reportId.trim() : ''
     const manualCourtFinding = typeof body.manualCourtFinding === 'string' ? body.manualCourtFinding.trim() : ''
     const manualLucFinding = typeof body.manualLucFinding === 'string' ? body.manualLucFinding.trim() : ''
+    const manualCourtStatus = typeof body.manualCourtStatus === 'string' ? body.manualCourtStatus.trim() : ''
+    const manualLucStatus = typeof body.manualLucStatus === 'string' ? body.manualLucStatus.trim() : ''
     const completedBy = typeof body.completedBy === 'string' ? body.completedBy.trim() : ''
 
     if (!reportId) {
@@ -33,6 +40,12 @@ export async function POST(req: NextRequest) {
     }
     if (!manualCourtFinding && !manualLucFinding) {
       return NextResponse.json({ error: 'Provide at least one manual finding' }, { status: 400 })
+    }
+    if (manualCourtFinding && !VALID_STATUSES.includes(manualCourtStatus as ManualCheckStatus)) {
+      return NextResponse.json({ error: 'Provide a valid court finding status' }, { status: 400 })
+    }
+    if (manualLucFinding && !VALID_STATUSES.includes(manualLucStatus as ManualCheckStatus)) {
+      return NextResponse.json({ error: 'Provide a valid LUC finding status' }, { status: 400 })
     }
 
     const db = supabaseAdmin()
@@ -42,6 +55,8 @@ export async function POST(req: NextRequest) {
         manual_status: 'completed',
         manual_court_finding: manualCourtFinding || null,
         manual_luc_finding: manualLucFinding || null,
+        manual_court_status: manualCourtFinding ? manualCourtStatus : null,
+        manual_luc_status: manualLucFinding ? manualLucStatus : null,
         manual_completed_at: new Date().toISOString(),
         manual_completed_by: completedBy || 'admin',
       })

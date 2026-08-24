@@ -35,6 +35,8 @@ export default function ManualChecksAdminPage() {
   const [completedBy, setCompletedBy] = useState<Record<string, string>>({})
   const [courtById, setCourtById] = useState<Record<string, string>>({})
   const [lucById, setLucById] = useState<Record<string, string>>({})
+  const [courtStatusById, setCourtStatusById] = useState<Record<string, string>>({})
+  const [lucStatusById, setLucStatusById] = useState<Record<string, string>>({})
   const [actionErrorById, setActionErrorById] = useState<Record<string, string>>({})
   const [savingById, setSavingById] = useState<Record<string, boolean>>({})
 
@@ -71,10 +73,20 @@ export default function ManualChecksAdminPage() {
   const markComplete = async (id: string) => {
     const manualCourtFinding = (courtById[id] || '').trim()
     const manualLucFinding = (lucById[id] || '').trim()
+    const manualCourtStatus = courtStatusById[id] || ''
+    const manualLucStatus = lucStatusById[id] || ''
     const reviewer = (completedBy[id] || '').trim()
 
     if (!manualCourtFinding && !manualLucFinding) {
       setActionErrorById(prev => ({ ...prev, [id]: 'Enter court and/or LUC finding before completing.' }))
+      return
+    }
+    if (manualCourtFinding && !manualCourtStatus) {
+      setActionErrorById(prev => ({ ...prev, [id]: 'Select a court finding status.' }))
+      return
+    }
+    if (manualLucFinding && !manualLucStatus) {
+      setActionErrorById(prev => ({ ...prev, [id]: 'Select a LUC finding status.' }))
       return
     }
 
@@ -91,6 +103,8 @@ export default function ManualChecksAdminPage() {
           reportId: id,
           manualCourtFinding,
           manualLucFinding,
+          manualCourtStatus: manualCourtStatus || undefined,
+          manualLucStatus: manualLucStatus || undefined,
           completedBy: reviewer,
         }),
       })
@@ -191,20 +205,44 @@ export default function ManualChecksAdminPage() {
                         placeholder="Reviewed by (optional)"
                         style={{ border: '1px solid #D1D5DB', borderRadius: 8, padding: '10px 12px', fontSize: 14 }}
                       />
-                      <textarea
-                        value={courtById[item.id] || ''}
-                        onChange={e => setCourtById(prev => ({ ...prev, [item.id]: e.target.value }))}
-                        placeholder="Court finding"
-                        rows={3}
-                        style={{ border: '1px solid #D1D5DB', borderRadius: 8, padding: '10px 12px', fontSize: 14, resize: 'vertical' }}
-                      />
-                      <textarea
-                        value={lucById[item.id] || ''}
-                        onChange={e => setLucById(prev => ({ ...prev, [item.id]: e.target.value }))}
-                        placeholder="LUC finding"
-                        rows={3}
-                        style={{ border: '1px solid #D1D5DB', borderRadius: 8, padding: '10px 12px', fontSize: 14, resize: 'vertical' }}
-                      />
+                      <div style={{ display: 'grid', gap: 6 }}>
+                        <textarea
+                          value={courtById[item.id] || ''}
+                          onChange={e => setCourtById(prev => ({ ...prev, [item.id]: e.target.value }))}
+                          placeholder="Court finding"
+                          rows={3}
+                          style={{ border: '1px solid #D1D5DB', borderRadius: 8, padding: '10px 12px', fontSize: 14, resize: 'vertical' }}
+                        />
+                        <select
+                          value={courtStatusById[item.id] || ''}
+                          onChange={e => setCourtStatusById(prev => ({ ...prev, [item.id]: e.target.value }))}
+                          style={{ border: '1px solid #D1D5DB', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151' }}
+                        >
+                          <option value="">Court finding status…</option>
+                          <option value="clear">Clear</option>
+                          <option value="caution">Caution</option>
+                          <option value="critical">Critical</option>
+                        </select>
+                      </div>
+                      <div style={{ display: 'grid', gap: 6 }}>
+                        <textarea
+                          value={lucById[item.id] || ''}
+                          onChange={e => setLucById(prev => ({ ...prev, [item.id]: e.target.value }))}
+                          placeholder="LUC finding"
+                          rows={3}
+                          style={{ border: '1px solid #D1D5DB', borderRadius: 8, padding: '10px 12px', fontSize: 14, resize: 'vertical' }}
+                        />
+                        <select
+                          value={lucStatusById[item.id] || ''}
+                          onChange={e => setLucStatusById(prev => ({ ...prev, [item.id]: e.target.value }))}
+                          style={{ border: '1px solid #D1D5DB', borderRadius: 8, padding: '8px 10px', fontSize: 13, color: '#374151' }}
+                        >
+                          <option value="">LUC finding status…</option>
+                          <option value="clear">Clear</option>
+                          <option value="caution">Caution</option>
+                          <option value="critical">Critical</option>
+                        </select>
+                      </div>
                       {actionErrorById[item.id] && (
                         <p style={{ margin: 0, color: '#B91C1C', fontSize: 13 }}>{actionErrorById[item.id]}</p>
                       )}

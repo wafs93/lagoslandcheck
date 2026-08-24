@@ -5,6 +5,7 @@ import { Resend } from 'resend'
 import { verifyAndRecordPayment } from '@/lib/paystack'
 import { ReportTier } from '@/lib/payment-signature'
 import { supabaseAdmin } from '@/lib/supabase'
+import { applyTierVisibility } from '@/lib/pdf-template'
 
 interface CheckPayload {
   id: string
@@ -31,13 +32,15 @@ const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || 'LagosLandCheck <support@lag
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || 'https://lagoslandcheck.com'
 
 const STATUS_LABEL: Record<string, string> = {
-  clear: 'CLEAR', caution: 'CAUTION', critical: 'HIGH RISK',
+  clear: 'CLEAR', caution: 'CAUTION', critical: 'HIGH RISK', locked: 'LOCKED', pending: 'PENDING',
 }
 
 const STATUS_COLOR: Record<string, { bg: string; text: string }> = {
   clear:    { bg: '#DCFCE7', text: '#15803D' },
   caution:  { bg: '#FEF3C7', text: '#B45309' },
   critical: { bg: '#FEE2E2', text: '#991B1B' },
+  locked:   { bg: '#F3F4F6', text: '#4B5563' },
+  pending:  { bg: '#DBEAFE', text: '#1D4ED8' },
 }
 
 const VERDICT_CONFIG = {
@@ -56,7 +59,10 @@ function escapeHtml(s: string): string {
 }
 
 function buildEmailHtml(body: RequestBody): string {
-  const { refNo, paymentRef, locationLabel, lat, lng, overall, checks } = body
+  const { refNo, paymentRef, locationLabel, lat, lng, overall } = body
+  const safeTier: ReportTier = body.requestTier === 'verified' ? 'verified' : 'instant'
+  // Manual review is never complete at send time — this email fires immediately after payment.
+  const checks = applyTierVisibility(body.checks, { tier: safeTier, manualStatus: 'pending' })
   const v = VERDICT_CONFIG[overall]
   const date = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
   const deepLink = `${SITE_URL}/report?lat=${lat}&lng=${lng}&paymentRef=${encodeURIComponent(paymentRef)}&ref=${refNo}`
