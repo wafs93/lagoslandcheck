@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import Footer from '@/components/Footer'
 import { computeDisplayVerdict } from '@/lib/pdf-template'
+import { theme, fontDisplay, fontBody, fontMono, GOOGLE_FONTS_IMPORT } from '@/lib/theme'
 
 interface CheckResult {
   id: string
@@ -35,21 +36,82 @@ const CHECKS_CONFIG = [
   { id: 'fraud',      icon: '🚨', name: 'Fraud zone & Omo Onile',     label: 'Scanning fraud database...' },
 ]
 
+// Verdict stamp styling — a single color drives the rotated ink-stamp per level.
+// Caution and critical intentionally share stamp red (only the wording differs);
+// clear uses registry green; a partial (locked/pending) verdict is neutral ink-soft.
 const RISK_CONFIG = {
-  CLEAR:    { bg: '#ECFDF5', border: '#6EE7B7', text: '#065F46', label: '🟢 Low Risk',    sub: 'No major issues found. Continue with standard legal due diligence.' },
-  CAUTION:  { bg: '#FFFBEB', border: '#FCD34D', text: '#92400E', label: '🟡 Medium Risk', sub: 'Concerns detected. Do not pay any money before consulting a lawyer.' },
-  CRITICAL: { bg: '#FEF2F2', border: '#FCA5A5', text: '#991B1B', label: '🔴 High Risk',   sub: 'Critical flags found. Strongly advise against proceeding.' },
-  PARTIAL:  { bg: '#F1F5F9', border: '#CBD5E1', text: '#334155', label: '⚪ Partial Assessment', sub: '' },
+  CLEAR:    { color: theme.registryGreen, label: 'CLEAR',    title: 'Clear',                sub: 'No major issues found. Continue with standard legal due diligence.' },
+  CAUTION:  { color: theme.stampRed,      label: 'CAUTION',  title: 'Proceed with Caution',  sub: 'Concerns detected. Do not pay any money before consulting a lawyer.' },
+  CRITICAL: { color: theme.stampRed,      label: 'CRITICAL', title: 'Do Not Proceed',        sub: 'Critical flags found. Strongly advise against proceeding.' },
+  PARTIAL:  { color: theme.inkSoft,       label: 'PARTIAL',  title: 'Partial Assessment',    sub: '' },
 }
 
+// Per-check evidence-log status styling. 'locked' reads as a SEALED mark
+// (Instant tier), 'pending' as a dashed lagoon-blue mini-stamp (Verified tier,
+// manual review not yet complete).
 const STATUS_CONFIG = {
-  clear:    { color: '#22C55E', bg: '#ECFDF5', badge: '#D1FAE5', text: '#065F46', label: 'CLEAR' },
-  caution:  { color: '#F59E0B', bg: '#FFFBEB', badge: '#FEF3C7', text: '#92400E', label: 'CAUTION' },
-  critical: { color: '#EF4444', bg: '#FEF2F2', badge: '#FEE2E2', text: '#991B1B', label: 'HIGH RISK' },
-  running:  { color: '#60A5FA', bg: '#EFF6FF', badge: '#DBEAFE', text: '#1D4ED8', label: 'CHECKING' },
-  queued:   { color: '#D1D5DB', bg: '#F9FAFB', badge: '#F3F4F6', text: '#6B7280', label: 'QUEUED' },
-  locked:   { color: '#9CA3AF', bg: '#F3F4F6', badge: '#E5E7EB', text: '#4B5563', label: 'LOCKED' },
-  pending:  { color: '#60A5FA', bg: '#EFF6FF', badge: '#DBEAFE', text: '#1D4ED8', label: 'PENDING' },
+  clear:    { color: theme.registryGreen, label: 'CLEAR' },
+  caution:  { color: theme.stampRed,      label: 'CAUTION' },
+  critical: { color: theme.stampRed,      label: 'CRITICAL' },
+  running:  { color: theme.lagoonBlue,    label: 'CHECKING' },
+  queued:   { color: theme.inkSoft,       label: 'QUEUED' },
+  locked:   { color: theme.inkSoft,       label: 'SEALED' },
+  pending:  { color: theme.lagoonBlue,    label: 'PENDING' },
+}
+
+// Rotated ink-stamp — the overall verdict. Replaces the old colored banner.
+function VerdictStamp({ color, label, size = 104 }: { color: string; label: string; size?: number }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', border: `3px solid ${color}`, color,
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      transform: 'rotate(-8deg)', flexShrink: 0, fontFamily: fontMono, textTransform: 'uppercase',
+    }}>
+      <span style={{ fontSize: size * 0.09, letterSpacing: 2, opacity: 0.75 }}>LLC</span>
+      <span style={{ fontSize: size * 0.145, fontWeight: 700, letterSpacing: 0.5, lineHeight: 1.1 }}>{label}</span>
+      <span style={{ fontSize: size * 0.08, letterSpacing: 1.5, opacity: 0.6, marginTop: 2 }}>VERIFIED</span>
+    </div>
+  )
+}
+
+// Small rotated stamp badge used on each evidence-log row for clear/caution/critical.
+function MiniStamp({ color, label }: { color: string; label: string }) {
+  return (
+    <div style={{
+      padding: '3px 9px', borderRadius: 3, border: `1.5px solid ${color}`, color,
+      fontFamily: fontMono, fontSize: 9, fontWeight: 700, letterSpacing: 1,
+      transform: 'rotate(-4deg)', display: 'inline-block', whiteSpace: 'nowrap',
+    }}>
+      {label}
+    </div>
+  )
+}
+
+// Circular seal mark — used for a check locked behind the Verified Report
+// (Instant tier, label "SEALED") and, with the generic "LOCKED" label, for
+// the whole report before any payment has been made.
+function SealedMark({ label = 'SEALED' }: { label?: string }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: theme.inkSoft, flexShrink: 0 }}>
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+        <circle cx="12" cy="12" r="8" />
+        <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+      <span style={{ fontFamily: fontMono, fontSize: 10, fontWeight: 700, letterSpacing: 1 }}>{label}</span>
+    </div>
+  )
+}
+
+// Dashed lagoon-blue mini-stamp for a manual check still awaiting review (Verified tier).
+function PendingMark() {
+  return (
+    <div style={{
+      padding: '3px 9px', borderRadius: 3, border: `1.5px dashed ${theme.lagoonBlue}`, color: theme.lagoonBlue,
+      fontFamily: fontMono, fontSize: 9, fontWeight: 700, letterSpacing: 1, display: 'inline-block',
+    }}>
+      PENDING
+    </div>
+  )
 }
 
 const PAYSTACK_KEY = process.env.NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY || ''
@@ -78,7 +140,7 @@ function StreetViewTab({ url, lat, lng }: { url: string | null; lat?: number; ln
   }
 
   if (!url) return (
-    <div style={{ height: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0A1628', color: 'rgba(255,255,255,0.5)', gap: 10 }}>
+    <div style={{ height: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0A1F19', color: 'rgba(255,255,255,0.5)', gap: 10 }}>
       <span style={{ fontSize: 32 }}>🗺️</span>
       <span style={{ fontSize: 13 }}>No Street View available</span>
       {lat && lng && (
@@ -93,9 +155,9 @@ function StreetViewTab({ url, lat, lng }: { url: string | null; lat?: number; ln
   return (
     <div style={{ position: 'relative', minHeight: 240 }}>
       {status === 'loading' && !nearestUrl && (
-        <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0A1628', gap: 10, position: 'absolute', inset: 0, zIndex: 1 }}>
+        <div style={{ height: 240, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#0A1F19', gap: 10, position: 'absolute', inset: 0, zIndex: 1 }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: 'monospace' }}>Loading street view...</span>
+          <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontFamily: fontMono }}>Loading street view...</span>
         </div>
       )}
       {!nearestUrl && (
@@ -107,16 +169,16 @@ function StreetViewTab({ url, lat, lng }: { url: string | null; lat?: number; ln
       {nearestUrl && (
         <div style={{ position: 'relative' }}>
           <img src={nearestUrl} alt="Nearest street view" style={{ width: '100%', height: 240, objectFit: 'cover', display: 'block' }} />
-          <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.75)', borderRadius: 6, padding: '5px 10px', fontSize: 10, color: '#fff', fontFamily: 'monospace' }}>
+          <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.75)', borderRadius: 6, padding: '5px 10px', fontSize: 10, color: '#fff', fontFamily: fontMono }}>
             📷 Nearest road view · {nearestDist}m from this location
           </div>
         </div>
       )}
       {status === 'error' && !nearestUrl && (
-        <div style={{ height: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0A1628', color: 'rgba(255,255,255,0.5)', gap: 10 }}>
+        <div style={{ height: 240, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#0A1F19', color: 'rgba(255,255,255,0.5)', gap: 10 }}>
           <span style={{ fontSize: 36 }}>🗺️</span>
           <span style={{ fontSize: 13, fontWeight: 500 }}>No Street View coverage here</span>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: 'monospace' }}>Common in Lagos residential streets</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.3)', fontFamily: fontMono }}>Common in Lagos residential streets</span>
           {lat && lng && (
             <a href={`https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m1!1e3`} target="_blank" rel="noopener noreferrer"
               style={{ padding: '7px 16px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: '#fff', fontSize: 12, textDecoration: 'none' }}>
@@ -126,7 +188,7 @@ function StreetViewTab({ url, lat, lng }: { url: string | null; lat?: number; ln
         </div>
       )}
       {status === 'ok' && !nearestUrl && (
-        <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: 'monospace' }}>
+        <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: fontMono }}>
           📷 Street View · Ground level
         </div>
       )}
@@ -422,36 +484,41 @@ export default function AgentPage() {
   const cautionCount = result?.checks.filter(c => (c.id === 'satellite' || c.id === 'gazette' || c.id === 'flood' || c.id === 'fraud') && (c.status === 'caution' || c.status === 'critical')).length || 0
 
   return (
-    <div style={{ fontFamily: "'Syne',sans-serif", background: '#F8FAF9', minHeight: '100vh' }}>
+    <div style={{ fontFamily: fontBody, background: theme.paper, minHeight: '100vh' }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=Inter:wght@400;500;600&family=Lora:ital,wght@0,600;1,600&family=JetBrains+Mono:wght@400;500&display=swap');
+        ${GOOGLE_FONTS_IMPORT}
         *{box-sizing:border-box;margin:0;padding:0}
         @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
         @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
         .appear{animation:fadeUp .4s ease both}
-        .card{background:#fff;border-radius:16px;border:1px solid #E5E7EB;box-shadow:0 1px 8px rgba(0,0,0,0.05)}
+        .card{background:#fff;border-radius:4px;border:1px solid rgba(23,27,20,0.12);box-shadow:0 1px 8px rgba(15,43,34,0.05)}
         textarea:focus,input:focus{outline:none!important}
       `}</style>
 
-      {/* NAV */}
-      <nav style={{ background: '#07382C', padding: '0 1.25rem', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 1px 0 rgba(255,255,255,0.04)' }}>
+      {/* TOPBAR */}
+      <nav style={{ background: theme.inkGreen, padding: '0 1.25rem', height: 60, display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 100, boxShadow: '0 1px 0 rgba(255,255,255,0.04)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <button onClick={() => stage === 'input' ? window.location.href = '/' : startNewCheck()}
-            style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 7, padding: '5px 12px', color: 'rgba(255,255,255,0.7)', fontSize: 12, cursor: 'pointer' }}>
+            style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 7, padding: '5px 12px', color: 'rgba(255,255,255,0.7)', fontSize: 12, cursor: 'pointer', fontFamily: fontBody }}>
             ← {stage === 'input' ? 'Home' : 'New check'}
           </button>
           <a href="/" style={{ display: 'flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
             <svg width="28" height="28" viewBox="0 0 44 44" fill="none">
-              <path d="M22 3 L38 9 L38 26 C38 35 22 42 22 42 C22 42 6 35 6 26 L6 9 Z" fill="rgba(207,175,110,0.1)" stroke="#CFAF6E" strokeWidth="2.5" strokeLinejoin="round"/>
-              <path d="M13 22 L19.5 29 L31 16" stroke="#CFAF6E" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+              <path d="M22 3 L38 9 L38 26 C38 35 22 42 22 42 C22 42 6 35 6 26 L6 9 Z" fill={`${theme.gold}1A`} stroke={theme.gold} strokeWidth="2.5" strokeLinejoin="round"/>
+              <path d="M13 22 L19.5 29 L31 16" stroke={theme.gold} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
-            <span style={{ fontWeight: 800, fontSize: 14, color: '#fff', fontFamily: "'Syne',sans-serif" }}>LagosLandCheck</span>
+            <span style={{ fontWeight: 700, fontSize: 14, color: '#fff', fontFamily: fontDisplay }}>LagosLandCheck</span>
           </a>
         </div>
-        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ADE80', animation: 'pulse 2s infinite', display: 'inline-block' }} />
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: 'monospace' }}>
+        <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 12 }}>
+          {stage === 'results' && result?.reportId && (
+            <span style={{ fontSize: 11, color: theme.gold, fontFamily: fontMono, letterSpacing: 1 }}>
+              {result.reportId}
+            </span>
+          )}
+          <span style={{ width: 6, height: 6, borderRadius: '50%', background: theme.registryGreen, animation: 'pulse 2s infinite', display: 'inline-block' }} />
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', fontFamily: fontMono }}>
             {stage === 'input' ? 'Ready' : stage === 'processing' ? 'Analyzing...' : 'Report ready'}
           </span>
         </div>
@@ -461,13 +528,13 @@ export default function AgentPage() {
       {stage === 'input' && (
         <div style={{ maxWidth: 580, margin: '0 auto', padding: '2rem 1rem' }} className="appear">
           <div style={{ textAlign: 'center', marginBottom: '1.75rem' }}>
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(10,92,69,0.08)', border: '1px solid rgba(10,92,69,0.15)', borderRadius: 24, padding: '5px 14px', fontSize: 10, fontFamily: 'monospace', color: '#0A5C45', letterSpacing: '1.5px', marginBottom: 14 }}>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: 'rgba(15,43,34,0.08)', border: '1px solid rgba(15,43,34,0.15)', borderRadius: 24, padding: '5px 14px', fontSize: 10, fontFamily: fontMono, color: '#0F2B22', letterSpacing: '1.5px', marginBottom: 14 }}>
               6 CHECKS · UNDER 2 MINUTES · NO SITE VISIT
             </div>
-            <h1 style={{ fontFamily: "'Lora',serif", fontSize: 'clamp(24px,5vw,36px)', fontWeight: 600, color: '#111827', lineHeight: 1.2, marginBottom: 10 }}>
+            <h1 style={{ fontFamily: fontDisplay, fontSize: 'clamp(24px,5vw,36px)', fontWeight: 600, color: '#171B14', lineHeight: 1.2, marginBottom: 10 }}>
               Where is the land<br/>you want to verify?
             </h1>
-            <p style={{ fontSize: 14, color: '#6B7280', lineHeight: 1.7 }}>Paste a Google Maps link, coordinates, or any Lagos address.</p>
+            <p style={{ fontSize: 14, color: '#6B6A5E', lineHeight: 1.7 }}>Paste a Google Maps link, coordinates, or any Lagos address.</p>
           </div>
 
           <div className="card" style={{ marginBottom: '1rem', overflow: 'hidden' }}>
@@ -476,17 +543,17 @@ export default function AgentPage() {
                 onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runVerification(input) } }}
                 placeholder="e.g. https://maps.google.com/?q=6.4698,3.5721 or 'Plot 14, Thomas Estate, Ajah'"
                 rows={3}
-                style={{ width: '100%', border: '1.5px solid #E5E7EB', borderRadius: 12, padding: '12px 14px', fontSize: 14, fontFamily: "'Syne',sans-serif", color: '#111827', background: '#FAFAFA', lineHeight: 1.6, resize: 'none', display: 'block', transition: 'border-color 0.2s' }}
-                onFocus={e => e.target.style.borderColor = '#0A5C45'} onBlur={e => e.target.style.borderColor = '#E5E7EB'} />
+                style={{ width: '100%', border: '1.5px solid rgba(23,27,20,0.14)', borderRadius: 12, padding: '12px 14px', fontSize: 14, fontFamily: fontBody, color: '#171B14', background: '#EDE6D3', lineHeight: 1.6, resize: 'none', display: 'block', transition: 'border-color 0.2s' }}
+                onFocus={e => e.target.style.borderColor = '#0F2B22'} onBlur={e => e.target.style.borderColor = 'rgba(23,27,20,0.14)'} />
               <div style={{ marginTop: 10 }}>
                 <input
                   type="text"
                   value={ownerName}
                   onChange={e => setOwnerName(e.target.value)}
                   placeholder="Property owner's full name or company name (optional)"
-                  style={{ width: '100%', border: '1.5px solid #E5E7EB', borderRadius: 12, padding: '11px 14px', fontSize: 14, fontFamily: "'Syne',sans-serif", color: '#111827', background: '#FAFAFA' }}
+                  style={{ width: '100%', border: '1.5px solid rgba(23,27,20,0.14)', borderRadius: 12, padding: '11px 14px', fontSize: 14, fontFamily: fontBody, color: '#171B14', background: '#EDE6D3' }}
                 />
-                <p style={{ marginTop: 6, fontSize: 11, color: '#6B7280', lineHeight: 1.6 }}>
+                <p style={{ marginTop: 6, fontSize: 11, color: '#6B6A5E', lineHeight: 1.6 }}>
                   Optional but recommended: Lagos court record search is name-based, not address-based.
                 </p>
               </div>
@@ -497,41 +564,41 @@ export default function AgentPage() {
                   { label: '📐 Coordinates', val: '6.4698, 3.5721' },
                 ].map(ex => (
                   <button key={ex.label} onClick={() => setInput(ex.val)}
-                    style={{ fontSize: 11, padding: '5px 12px', borderRadius: 16, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#6B7280', cursor: 'pointer', fontFamily: 'monospace' }}>
+                    style={{ fontSize: 11, padding: '5px 12px', borderRadius: 16, border: '1px solid rgba(23,27,20,0.14)', background: '#EDE6D3', color: '#6B6A5E', cursor: 'pointer', fontFamily: fontMono }}>
                     {ex.label}
                   </button>
                 ))}
               </div>
             </div>
             <button onClick={() => runVerification(input)} disabled={!input.trim()}
-              style={{ width: '100%', padding: '16px 0', background: input.trim() ? 'linear-gradient(135deg,#0A5C45,#07382C)' : '#E5E7EB', border: 'none', fontSize: 15, fontWeight: 700, color: input.trim() ? '#fff' : '#9CA3AF', cursor: input.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, fontFamily: "'Syne',sans-serif" }}>
+              style={{ width: '100%', padding: '16px 0', background: input.trim() ? 'linear-gradient(135deg,#0F2B22,#0A1F19)' : 'rgba(23,27,20,0.14)', border: 'none', fontSize: 15, fontWeight: 700, color: input.trim() ? '#fff' : '#6B6A5E', cursor: input.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, fontFamily: fontBody }}>
               {input.trim() ? '🔍 Analyze This Land' : 'Paste location above to continue'}
             </button>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: 10, marginBottom: '1.25rem' }}>
             {[{ icon: '🛰️', t: '6 checks', s: 'Satellite + databases' }, { icon: '⚡', t: 'Under 2 min', s: 'Real-time results' }, { icon: '🌍', t: 'Works abroad', s: 'No site visit' }].map(f => (
-              <div key={f.t} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 12, padding: '12px 8px', textAlign: 'center' }}>
+              <div key={f.t} style={{ background: '#fff', border: '1px solid rgba(23,27,20,0.14)', borderRadius: 12, padding: '12px 8px', textAlign: 'center' }}>
                 <div style={{ fontSize: 22, marginBottom: 4 }}>{f.icon}</div>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#111827' }}>{f.t}</div>
-                <div style={{ fontSize: 10, color: '#9CA3AF', fontFamily: 'monospace', marginTop: 2 }}>{f.s}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#171B14' }}>{f.t}</div>
+                <div style={{ fontSize: 10, color: '#6B6A5E', fontFamily: fontMono, marginTop: 2 }}>{f.s}</div>
               </div>
             ))}
           </div>
 
           <div className="card" style={{ padding: '1.25rem' }}>
-            <p style={{ fontSize: 10, fontFamily: 'monospace', color: '#0A5C45', letterSpacing: '1.5px', marginBottom: 10 }}>6 CHECKS WE RUN</p>
+            <p style={{ fontSize: 10, fontFamily: fontMono, color: '#0F2B22', letterSpacing: '1.5px', marginBottom: 10 }}>6 CHECKS WE RUN</p>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
               {CHECKS_CONFIG.map(c => (
-                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: '#F9FAFB', borderRadius: 9 }}>
+                <div key={c.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', background: '#EDE6D3', borderRadius: 9 }}>
                   <span style={{ fontSize: 16 }}>{c.icon}</span>
-                  <span style={{ fontSize: 13, color: '#374151', flex: 1 }}>{c.name}</span>
+                  <span style={{ fontSize: 13, color: '#171B14', flex: 1 }}>{c.name}</span>
                 </div>
               ))}
             </div>
           </div>
 
-          <p style={{ textAlign: 'center', fontSize: 11, color: '#9CA3AF', marginTop: '1.25rem', fontFamily: 'monospace', lineHeight: 1.8 }}>
+          <p style={{ textAlign: 'center', fontSize: 11, color: '#6B6A5E', marginTop: '1.25rem', fontFamily: fontMono, lineHeight: 1.8 }}>
             Powered by Lagos public data + satellite analysis<br/>
             Used by diaspora buyers · Lawyers · Estate professionals
           </p>
@@ -543,15 +610,15 @@ export default function AgentPage() {
         <div style={{ maxWidth: 500, margin: '0 auto', padding: '2.5rem 1rem' }} className="appear">
           <div className="card" style={{ padding: '2rem' }}>
             <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-              <div style={{ width: 56, height: 56, background: 'linear-gradient(135deg,#0A5C45,#07382C)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
+              <div style={{ width: 56, height: 56, background: 'linear-gradient(135deg,#0F2B22,#0A1F19)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" style={{ animation: 'spin 2s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10"/><path d="M12 2a10 10 0 0 0-10 10" opacity="0.3"/></svg>
               </div>
-              <h2 style={{ fontFamily: "'Lora',serif", fontSize: 22, fontWeight: 600, color: '#111827', marginBottom: 6 }}>Analyzing the land</h2>
-              <p style={{ fontSize: 12, color: '#9CA3AF', fontFamily: 'monospace' }}>{input.slice(0, 55)}{input.length > 55 ? '...' : ''}</p>
+              <h2 style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: 600, color: '#171B14', marginBottom: 6 }}>Analyzing the land</h2>
+              <p style={{ fontSize: 12, color: '#6B6A5E', fontFamily: fontMono }}>{input.slice(0, 55)}{input.length > 55 ? '...' : ''}</p>
             </div>
 
-            <div style={{ background: '#F3F4F6', borderRadius: 8, height: 6, marginBottom: '1.75rem', overflow: 'hidden' }}>
-              <div style={{ height: '100%', background: 'linear-gradient(90deg,#0A5C45,#5DCAA5)', borderRadius: 8, width: `${Math.min(100, (processingStep / 7) * 100)}%`, transition: 'width 0.6s ease' }} />
+            <div style={{ background: '#EDE6D3', borderRadius: 8, height: 6, marginBottom: '1.75rem', overflow: 'hidden' }}>
+              <div style={{ height: '100%', background: `linear-gradient(90deg,${theme.inkGreen},${theme.gold})`, borderRadius: 8, width: `${Math.min(100, (processingStep / 7) * 100)}%`, transition: 'width 0.6s ease' }} />
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -559,79 +626,77 @@ export default function AgentPage() {
                 const done = processingChecks.includes(step.id)
                 const active = processingStep === i + 1 && !done
                 return (
-                  <div key={step.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, background: done ? '#F0FDF4' : active ? '#EFF6FF' : '#F9FAFB', border: `1px solid ${done ? '#BBF7D0' : active ? '#BFDBFE' : '#F3F4F6'}`, transition: 'all 0.3s' }}>
-                    <div style={{ width: 22, height: 22, borderRadius: '50%', background: done ? '#22C55E' : active ? '#3B82F6' : '#E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <div key={step.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 10, background: done ? '#E8F3EC' : active ? '#EAF3F7' : '#EDE6D3', border: `1px solid ${done ? '#BFE0CC' : active ? '#BFDDE7' : '#EDE6D3'}`, transition: 'all 0.3s' }}>
+                    <div style={{ width: 22, height: 22, borderRadius: '50%', background: done ? '#3E8A63' : active ? '#6FA8C7' : 'rgba(23,27,20,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                       {done ? <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>
                         : active ? <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" style={{ animation: 'spin 1s linear infinite' }}><path d="M12 2a10 10 0 0 1 10 10"/></svg>
-                        : <span style={{ fontSize: 9, color: '#9CA3AF', fontWeight: 700 }}>{i + 1}</span>}
+                        : <span style={{ fontSize: 9, color: '#6B6A5E', fontWeight: 700 }}>{i + 1}</span>}
                     </div>
-                    <span style={{ fontSize: 13, color: done ? '#065F46' : active ? '#1D4ED8' : '#9CA3AF', fontWeight: done || active ? 500 : 400 }}>
+                    <span style={{ fontSize: 13, color: done ? '#3E8A63' : active ? '#6FA8C7' : '#6B6A5E', fontWeight: done || active ? 500 : 400 }}>
                       {step.icon} {step.label}
                     </span>
-                    {done && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#22C55E', fontFamily: 'monospace' }}>✓</span>}
-                    {active && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#3B82F6', fontFamily: 'monospace', animation: 'pulse 1s infinite' }}>...</span>}
+                    {done && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#3E8A63', fontFamily: fontMono }}>✓</span>}
+                    {active && <span style={{ marginLeft: 'auto', fontSize: 10, color: '#6FA8C7', fontFamily: fontMono, animation: 'pulse 1s infinite' }}>...</span>}
                   </div>
                 )
               })}
             </div>
-            <p style={{ textAlign: 'center', fontSize: 11, color: '#9CA3AF', marginTop: '1.5rem', fontFamily: 'monospace' }}>Under 2 minutes · Do not close this page</p>
+            <p style={{ textAlign: 'center', fontSize: 11, color: '#6B6A5E', marginTop: '1.5rem', fontFamily: fontMono }}>Under 2 minutes · Do not close this page</p>
           </div>
         </div>
       )}
 
-      {/* STAGE 3: RESULTS */}
+      {/* STAGE 3: RESULTS — case file */}
       {stage === 'results' && result && rc && (
-        <div style={{ maxWidth: 660, margin: '0 auto', padding: '1.25rem 1rem 4rem' }}>
+        <div style={{ maxWidth: 680, margin: '0 auto', padding: '1.25rem 1rem 4rem' }}>
 
-          {/* Risk Score */}
+          {/* Case header */}
+          <div className="appear" style={{ marginBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div>
+                <p style={{ fontSize: 10, fontFamily: fontMono, color: theme.inkSoft, letterSpacing: 2, marginBottom: 6 }}>CASE FILE</p>
+                <h1 style={{ fontFamily: fontDisplay, fontSize: 'clamp(20px,4vw,28px)', fontWeight: 600, color: theme.ink, lineHeight: 1.25 }}>
+                  {result.location_label}
+                </h1>
+              </div>
+              {result.lat && result.lng && (
+                <div style={{ textAlign: 'right', flexShrink: 0 }}>
+                  <div style={{ fontSize: 9, fontFamily: fontMono, color: theme.inkSoft, letterSpacing: 1.5, marginBottom: 3 }}>COORDINATES</div>
+                  <div style={{ fontSize: 12, fontFamily: fontMono, color: theme.ink }}>{result.lat.toFixed(4)}°N, {result.lng.toFixed(4)}°E</div>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Verdict block — ink stamp, not a colored banner */}
           {paid ? (
-            <div className="appear card" style={{ background: rc.bg, border: `1px solid ${rc.border}`, marginBottom: '1rem', padding: '1.25rem 1.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                <div>
-                  <p style={{ fontSize: 10, fontFamily: 'monospace', color: rc.text, letterSpacing: '1.5px', opacity: 0.7, marginBottom: 5 }}>OVERALL RISK ASSESSMENT</p>
-                  <div style={{ fontFamily: "'Lora',serif", fontSize: 26, fontWeight: 600, color: rc.text, marginBottom: 4 }}>{rc.label}</div>
-                  <p style={{ fontSize: 13, color: rc.text, opacity: 0.8, lineHeight: 1.6, maxWidth: 360 }}>{rc.sub}</p>
-                  {displayVerdict?.reason === 'instant-locked' && (
-                    <a href="/agent" style={{ fontSize: 11, color: '#0A5C45', fontWeight: 600, textDecoration: 'none', display: 'inline-block', marginTop: 6 }}>
-                      Upgrade to Verified Report →
-                    </a>
-                  )}
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: 10, fontFamily: 'monospace', color: rc.text, opacity: 0.6, marginBottom: 4 }}>LOCATION</div>
-                  <div style={{ fontSize: 12, color: rc.text, fontWeight: 500, maxWidth: 200, lineHeight: 1.4 }}>{result.location_label}</div>
-                  {result.lat && result.lng && (
-                    <div style={{ fontSize: 10, fontFamily: 'monospace', color: rc.text, opacity: 0.5, marginTop: 4 }}>
-                      {result.lat.toFixed(4)}°N, {result.lng.toFixed(4)}°E
-                    </div>
-                  )}
-                </div>
-              </div>
-              <div style={{ marginTop: '1rem', display: 'flex', gap: 4 }}>
-                {(['CLEAR','CAUTION','CRITICAL'] as const).map(s => (
-                  <div key={s} style={{ flex: 1, height: 5, borderRadius: 3, background: displayVerdict?.level === s ? (s === 'CLEAR' ? '#22C55E' : s === 'CAUTION' ? '#F59E0B' : '#EF4444') : '#E5E7EB' }} />
-                ))}
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4 }}>
-                {['Low Risk', 'Medium Risk', 'High Risk'].map(l => (
-                  <span key={l} style={{ fontSize: 9, color: rc.text, opacity: 0.5, fontFamily: 'monospace' }}>{l}</span>
-                ))}
+            <div className="appear card" style={{ marginBottom: '1rem', padding: '1.5rem', display: 'flex', gap: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+              <VerdictStamp color={rc.color} label={rc.label} />
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <p style={{ fontSize: 10, fontFamily: fontMono, color: theme.inkSoft, letterSpacing: 1.5, marginBottom: 6 }}>OVERALL RISK ASSESSMENT</p>
+                <div style={{ fontFamily: fontDisplay, fontSize: 22, fontWeight: 600, color: theme.ink, marginBottom: 6 }}>{rc.title}</div>
+                <p style={{ fontSize: 13, color: theme.inkSoft, lineHeight: 1.6 }}>{rc.sub}</p>
+                {displayVerdict?.reason === 'instant-locked' && (
+                  <a href="/agent" style={{ fontSize: 11, color: theme.inkGreen, fontWeight: 600, textDecoration: 'none', display: 'inline-block', marginTop: 8 }}>
+                    Upgrade to Verified Report →
+                  </a>
+                )}
               </div>
             </div>
           ) : (
-            <div className="appear card" style={{ background: '#F9FAFB', border: '1px solid #E5E7EB', marginBottom: '1rem', padding: '1.25rem 1.5rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, flexWrap: 'wrap' }}>
-                <div>
-                  <p style={{ fontSize: 10, fontFamily: 'monospace', color: '#6B7280', letterSpacing: '1.5px', marginBottom: 5 }}>VERIFICATION SUMMARY</p>
-                  <div style={{ fontFamily: "'Lora',serif", fontSize: 20, fontWeight: 600, color: '#111827' }}>
-                    6 checks completed — {cautionCount === 0 ? 'no concerns flagged' : `${cautionCount} concern${cautionCount === 1 ? '' : 's'} flagged`}
-                  </div>
-                  <p style={{ fontSize: 12, color: '#9CA3AF', marginTop: 6 }}>Unlock the full report to see the risk verdict and detailed findings.</p>
+            <div className="appear card" style={{ marginBottom: '1rem', padding: '1.5rem', display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap', border: '1px dashed rgba(23,27,20,0.25)' }}>
+              <div style={{ color: theme.inkSoft, flexShrink: 0 }}>
+                <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M9 12l2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </div>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <p style={{ fontSize: 10, fontFamily: fontMono, color: theme.inkSoft, letterSpacing: 1.5, marginBottom: 6 }}>VERIFICATION SUMMARY · SEALED</p>
+                <div style={{ fontFamily: fontDisplay, fontSize: 18, fontWeight: 600, color: theme.ink }}>
+                  6 checks completed — {cautionCount === 0 ? 'no concerns flagged' : `${cautionCount} concern${cautionCount === 1 ? '' : 's'} flagged`}
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#9CA3AF', fontSize: 11, fontFamily: 'monospace', flexShrink: 0 }}>
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                  <span>LOCKED</span>
-                </div>
+                <p style={{ fontSize: 12, color: theme.inkSoft, marginTop: 6 }}>Unlock the full report to see the risk verdict and detailed findings.</p>
               </div>
             </div>
           )}
@@ -639,18 +704,18 @@ export default function AgentPage() {
           {/* Image Viewer */}
           {(satelliteUrl || streetViewUrl) && (
             <div className="appear card" style={{ marginBottom: '1rem', overflow: 'hidden' }}>
-              <div style={{ display: 'flex', background: '#0A1628', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <div style={{ display: 'flex', background: '#0A1F19', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
                 {[
                   { id: 'satellite' as const, label: '🛰️ Satellite', show: !!satelliteUrl },
                   { id: 'street' as const, label: '📷 Street View', show: !!streetViewUrl },
                 ].filter(t => t.show).map(tab => (
                   <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                    style={{ padding: '10px 14px', background: activeTab === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', borderBottom: activeTab === tab.id ? '2px solid #CFAF6E' : '2px solid transparent', color: activeTab === tab.id ? '#fff' : 'rgba(255,255,255,0.4)', fontSize: 11, fontFamily: 'monospace', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                    style={{ padding: '10px 14px', background: activeTab === tab.id ? 'rgba(255,255,255,0.1)' : 'transparent', border: 'none', borderBottom: activeTab === tab.id ? '2px solid #C7A65C' : '2px solid transparent', color: activeTab === tab.id ? '#fff' : 'rgba(255,255,255,0.4)', fontSize: 11, fontFamily: fontMono, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     {tab.label}
                   </button>
                 ))}
                 <div style={{ flex: 1 }} />
-                <div style={{ padding: '10px 10px', fontSize: 9, color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace', alignSelf: 'center' }}>
+                <div style={{ padding: '10px 10px', fontSize: 9, color: 'rgba(255,255,255,0.25)', fontFamily: fontMono, alignSelf: 'center' }}>
                   {result.lat?.toFixed(4)}°N {result.lng?.toFixed(4)}°E
                 </div>
               </div>
@@ -660,17 +725,17 @@ export default function AgentPage() {
                   <div style={{ position: 'relative', cursor: 'zoom-in' }} onClick={() => setImgZoom(true)}>
                     <img src={satelliteUrl} alt="Satellite" style={{ width: '100%', height: 260, objectFit: 'cover', display: 'block' }}
                       onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                    <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: 'monospace' }}>
+                    <div style={{ position: 'absolute', top: 10, left: 10, background: 'rgba(0,0,0,0.65)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: fontMono }}>
                       🛰️ Tap to zoom · AI analysed · zoom 20
                     </div>
                     {hasBuilding && paid && (
-                      <div style={{ position: 'absolute', top: 10, right: 10, background: 'rgba(239,68,68,0.92)', borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: 'monospace', fontWeight: 700 }}>
+                      <div style={{ position: 'absolute', top: 10, right: 10, background: `${theme.stampRed}EB`, borderRadius: 6, padding: '4px 10px', fontSize: 10, color: '#fff', fontFamily: fontMono, fontWeight: 700 }}>
                         ⚠️ BUILDING DETECTED
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div style={{ height: 260, background: '#0A1628', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 13, fontFamily: 'monospace' }}>
+                  <div style={{ height: 260, background: '#0A1F19', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(255,255,255,0.3)', fontSize: 13, fontFamily: fontMono }}>
                     Satellite image not available for this location
                   </div>
                 )}
@@ -688,106 +753,99 @@ export default function AgentPage() {
               <div style={{ maxWidth: 700, width: '100%' }}>
                 <img src={`https://maps.googleapis.com/maps/api/staticmap?center=${result.lat},${result.lng}&zoom=20&size=640x640&maptype=hybrid&key=${GOOGLE_MAPS_KEY}`}
                   alt="HD Satellite" style={{ width: '100%', borderRadius: 12 }} />
-                <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 10, fontFamily: 'monospace' }}>Tap anywhere to close</p>
+                <p style={{ textAlign: 'center', color: 'rgba(255,255,255,0.4)', fontSize: 11, marginTop: 10, fontFamily: fontMono }}>Tap anywhere to close</p>
               </div>
             </div>
           )}
 
-          {/* 6 Checks — NEW DESIGN: locked cards show teaser + lock icon, NO per-card price */}
-          <div className="appear" style={{ marginBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-              <p style={{ fontSize: 10, fontFamily: 'monospace', color: '#6B7280', letterSpacing: '1.5px' }}>6 RISK CHECKS</p>
-              <span style={{ fontSize: 10, fontFamily: 'monospace', background: paid ? '#D1FAE5' : '#FEF3C7', color: paid ? '#065F46' : '#92400E', padding: '2px 8px', borderRadius: 4 }}>
+          {/* Evidence log — 6 numbered check entries */}
+          <div className="appear card" style={{ marginBottom: '1rem', overflow: 'hidden' }}>
+            <div style={{ padding: '13px 18px', borderBottom: '1px solid rgba(23,27,20,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <p style={{ fontSize: 10, fontFamily: fontMono, color: theme.inkSoft, letterSpacing: 2 }}>EVIDENCE LOG · 6 CHECKS</p>
+              <span style={{ fontSize: 10, fontFamily: fontMono, color: paid ? theme.registryGreen : theme.inkSoft, letterSpacing: 1, fontWeight: 600 }}>
                 {paid ? '✓ FULL ACCESS' : 'PREVIEW MODE'}
               </span>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {result.checks.map(check => {
-                const checkIcon = CHECKS_CONFIG.find(c => c.id === check.id)?.icon || '🔍'
-                const needsManualCheck = check.id === 'litigation' || check.id === 'luc'
-                const effectivePaidTier = paid ? paidTier : null
+            {result.checks.map((check, i) => {
+              const needsManualCheck = check.id === 'litigation' || check.id === 'luc'
+              const effectivePaidTier = paid ? paidTier : null
 
-                let displayStatus: keyof typeof STATUS_CONFIG = check.status
-                let displaySummary = check.summary
-                let displayDetails = check.details
-                let isLockedCard = false
+              let displayStatus: keyof typeof STATUS_CONFIG = check.status
+              let displaySummary = check.summary
+              let displayDetails = check.details
+              let isLockedCard = false
 
-                if (needsManualCheck && effectivePaidTier === 'instant') {
-                  isLockedCard = true
-                  displayStatus = 'locked'
-                  displaySummary = ''
-                  displayDetails = ''
-                } else if (needsManualCheck && effectivePaidTier === 'verified') {
-                  displayStatus = 'pending'
-                  displaySummary = 'Manual verification pending — results will be added within 24-48 hours.'
-                  displayDetails = ''
-                }
+              if (needsManualCheck && effectivePaidTier === 'instant') {
+                isLockedCard = true
+                displayStatus = 'locked'
+                displaySummary = ''
+                displayDetails = ''
+              } else if (needsManualCheck && effectivePaidTier === 'verified') {
+                displayStatus = 'pending'
+                displaySummary = 'Manual verification pending — results will be added within 24-48 hours.'
+                displayDetails = ''
+              }
 
-                const sc = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.queued
-                const isOpen = expanded === check.id && paid
-                const iconBg = paid ? sc.bg : '#F3F4F6'
-                return (
-                  <div key={check.id} className="card" style={{ overflow: 'hidden', cursor: paid && !isLockedCard ? 'pointer' : 'default', transition: 'all 0.2s' }}
-                    onClick={() => paid && !isLockedCard && setExpanded(isOpen ? null : check.id)}>
-                    <div style={{ padding: '12px 16px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div style={{ width: 38, height: 38, borderRadius: 10, background: iconBg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>{checkIcon}</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginBottom: 3, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>{check.name}</span>
-                            {paid && (
-                              <span style={{ fontSize: 9, fontFamily: 'monospace', padding: '2px 8px', borderRadius: 4, background: sc.badge, color: sc.text, fontWeight: 700 }}>{sc.label}</span>
-                            )}
-                          </div>
-                          {paid && (
-                            isLockedCard ? (
-                              <>
-                                <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>
-                                  Included in the Verified Report — requires manual registry search.
-                                </p>
-                                <a
-                                  href="/agent"
-                                  onClick={e => e.stopPropagation()}
-                                  style={{ fontSize: 11, color: '#0A5C45', fontWeight: 600, textDecoration: 'none', display: 'inline-block', marginTop: 4 }}
-                                >
-                                  Upgrade to Verified Report →
-                                </a>
-                              </>
-                            ) : (
-                              <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.5 }}>{displaySummary}</p>
-                            )
-                          )}
-                        </div>
-                        {!paid ? (
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: '#9CA3AF', fontSize: 11, fontFamily: 'monospace', flexShrink: 0 }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                            <span>LOCKED</span>
-                          </div>
-                        ) : (
-                          <div style={{ width: 8, height: 8, borderRadius: '50%', background: sc.color, flexShrink: 0 }} />
-                        )}
-                      </div>
-                      {isOpen && paid && !isLockedCard && displayDetails && (
-                        <div style={{ marginTop: 10, paddingTop: 10, borderTop: '0.5px solid #F3F4F6' }}>
-                          <p style={{ fontSize: 12, color: '#374151', lineHeight: 1.75 }}>{displayDetails}</p>
-                        </div>
-                      )}
-                    </div>
+              const sc = STATUS_CONFIG[displayStatus] || STATUS_CONFIG.queued
+              const isOpen = expanded === check.id && paid
+              return (
+                <div key={check.id}
+                  style={{ display: 'flex', gap: 16, padding: '16px 18px', borderBottom: i < result.checks.length - 1 ? '1px solid rgba(23,27,20,0.08)' : 'none', cursor: paid && !isLockedCard ? 'pointer' : 'default', transition: 'background 0.15s' }}
+                  onClick={() => paid && !isLockedCard && setExpanded(isOpen ? null : check.id)}>
+                  <div style={{ fontFamily: fontMono, fontSize: 13, fontWeight: 600, color: theme.inkSoft, flexShrink: 0, width: 22, paddingTop: 2 }}>
+                    {String(i + 1).padStart(2, '0')}
                   </div>
-                )
-              })}
-            </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: theme.ink, marginBottom: paid ? 4 : 0 }}>{check.name}</div>
+                    {paid && (
+                      isLockedCard ? (
+                        <>
+                          <p style={{ fontSize: 12, color: theme.inkSoft, lineHeight: 1.5 }}>
+                            Included in the Verified Report — requires manual registry search.
+                          </p>
+                          <a
+                            href="/agent"
+                            onClick={e => e.stopPropagation()}
+                            style={{ fontSize: 11, color: theme.inkGreen, fontWeight: 600, textDecoration: 'none', display: 'inline-block', marginTop: 4 }}
+                          >
+                            Upgrade to Verified Report →
+                          </a>
+                        </>
+                      ) : (
+                        <p style={{ fontSize: 12, color: theme.inkSoft, lineHeight: 1.5 }}>{displaySummary}</p>
+                      )
+                    )}
+                    {isOpen && paid && !isLockedCard && displayDetails && (
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: '0.5px dashed rgba(23,27,20,0.15)' }}>
+                        <p style={{ fontSize: 12, color: theme.ink, lineHeight: 1.75 }}>{displayDetails}</p>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ flexShrink: 0, paddingTop: 2 }}>
+                    {!paid ? (
+                      <SealedMark label="LOCKED" />
+                    ) : displayStatus === 'locked' ? (
+                      <SealedMark />
+                    ) : displayStatus === 'pending' ? (
+                      <PendingMark />
+                    ) : (
+                      <MiniStamp color={sc.color} label={sc.label} />
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
 
           {/* SINGLE PAYWALL CTA — one price, one button */}
           {!paid && (
-            <div className="appear card" style={{ background: 'linear-gradient(135deg,#0A5C45,#07382C)', border: 'none', padding: '1.5rem', marginBottom: '1rem', position: 'relative', overflow: 'hidden' }}>
+            <div className="appear card" style={{ background: `linear-gradient(135deg,${theme.inkGreen},${theme.inkGreenDeep})`, border: 'none', padding: '1.5rem', marginBottom: '1rem', position: 'relative', overflow: 'hidden' }}>
               {/* Gold accent stripe */}
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: 'linear-gradient(90deg,#CFAF6E 0%,#CFAF6E 30%,transparent 30%,transparent 70%,#CFAF6E 70%)' }} />
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: `linear-gradient(90deg,${theme.gold} 0%,${theme.gold} 30%,transparent 30%,transparent 70%,${theme.gold} 70%)` }} />
 
-              <p style={{ fontSize: 10, fontFamily: 'monospace', color: '#CFAF6E', letterSpacing: '2px', marginBottom: 8, fontWeight: 600 }}>UNLOCK FULL REPORT</p>
-              <h3 style={{ fontFamily: "'Lora',serif", fontSize: 22, color: '#fff', fontWeight: 600, marginBottom: 6, lineHeight: 1.2 }}>
-                Unlock all 6 detailed findings
+              <p style={{ fontSize: 10, fontFamily: fontMono, color: theme.gold, letterSpacing: '2px', marginBottom: 8, fontWeight: 600 }}>UNSEAL THE FULL REPORT</p>
+              <h3 style={{ fontFamily: fontDisplay, fontSize: 22, color: '#fff', fontWeight: 600, marginBottom: 6, lineHeight: 1.2 }}>
+                Unseal all 6 detailed findings
               </h3>
               <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.7)', marginBottom: 16, lineHeight: 1.5 }}>
                 {cautionCount > 0
@@ -812,14 +870,14 @@ export default function AgentPage() {
               </div>
 
               <div style={{ marginBottom: 12 }}>
-                <div style={{ fontSize: 10, fontFamily: 'monospace', color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', marginBottom: 6 }}>
+                <div style={{ fontSize: 10, fontFamily: fontMono, color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', marginBottom: 6 }}>
                   SELECT REPORT TYPE
                 </div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                   <button
                     type="button"
                     onClick={() => setRequestTier('instant')}
-                    style={{ textAlign: 'left', padding: '10px 11px', borderRadius: 9, border: requestTier === 'instant' ? '1.5px solid #CFAF6E' : '1px solid rgba(255,255,255,0.2)', background: requestTier === 'instant' ? 'rgba(207,175,110,0.16)' : 'rgba(255,255,255,0.07)', color: '#fff', cursor: 'pointer' }}
+                    style={{ textAlign: 'left', padding: '10px 11px', borderRadius: 4, border: requestTier === 'instant' ? `1.5px solid ${theme.gold}` : '1px solid rgba(255,255,255,0.2)', background: requestTier === 'instant' ? `${theme.gold}29` : 'rgba(255,255,255,0.07)', color: '#fff', cursor: 'pointer' }}
                   >
                     <div style={{ fontSize: 12, fontWeight: 700 }}>Instant Report</div>
                     <div style={{ fontSize: 11, opacity: 0.85 }}>₦5,000 · Delivered immediately</div>
@@ -827,7 +885,7 @@ export default function AgentPage() {
                   <button
                     type="button"
                     onClick={() => setRequestTier('verified')}
-                    style={{ textAlign: 'left', padding: '10px 11px', borderRadius: 9, border: requestTier === 'verified' ? '1.5px solid #CFAF6E' : '1px solid rgba(255,255,255,0.2)', background: requestTier === 'verified' ? 'rgba(207,175,110,0.16)' : 'rgba(255,255,255,0.07)', color: '#fff', cursor: 'pointer' }}
+                    style={{ textAlign: 'left', padding: '10px 11px', borderRadius: 4, border: requestTier === 'verified' ? `1.5px solid ${theme.gold}` : '1px solid rgba(255,255,255,0.2)', background: requestTier === 'verified' ? `${theme.gold}29` : 'rgba(255,255,255,0.07)', color: '#fff', cursor: 'pointer' }}
                   >
                     <div style={{ fontSize: 12, fontWeight: 700 }}>Verified Report</div>
                     <div style={{ fontSize: 11, opacity: 0.85 }}>₦50,000 · Manual court + LUC, 24-48h</div>
@@ -836,10 +894,10 @@ export default function AgentPage() {
               </div>
 
               {/* Price row */}
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'rgba(0,0,0,0.25)', borderRadius: 10, marginBottom: 12, border: '1px solid rgba(207,175,110,0.25)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: 'rgba(0,0,0,0.25)', borderRadius: 4, marginBottom: 12, border: `1px solid ${theme.gold}40` }}>
                 <div>
-                  <div style={{ fontSize: 10, fontFamily: 'monospace', color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', marginBottom: 2 }}>ONE-TIME · NO SUBSCRIPTION</div>
-                  <div style={{ fontFamily: "'Lora',serif", fontSize: 24, fontWeight: 700, color: '#fff', lineHeight: 1 }}>
+                  <div style={{ fontSize: 10, fontFamily: fontMono, color: 'rgba(255,255,255,0.5)', letterSpacing: '1.5px', marginBottom: 2 }}>ONE-TIME · NO SUBSCRIPTION</div>
+                  <div style={{ fontFamily: fontDisplay, fontSize: 24, fontWeight: 700, color: '#fff', lineHeight: 1 }}>
                     ₦{tierPriceNaira.toLocaleString()}
                     <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', fontWeight: 400, marginLeft: 8 }}>{tierName}</span>
                   </div>
@@ -849,17 +907,17 @@ export default function AgentPage() {
               <input type="email" value={email} onChange={e => setEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && initPaystack()}
                 placeholder="your@email.com — receipt + report sent here"
-                style={{ width: '100%', padding: '12px 14px', borderRadius: 10, border: `1.5px solid ${email && !isValidEmail(email) ? 'rgba(239,68,68,0.6)' : 'rgba(255,255,255,0.25)'}`, background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 14, fontFamily: "'Syne',sans-serif", marginBottom: 4 }} />
+                style={{ width: '100%', padding: '12px 14px', borderRadius: 4, border: `1.5px solid ${email && !isValidEmail(email) ? 'rgba(239,68,68,0.6)' : 'rgba(255,255,255,0.25)'}`, background: 'rgba(255,255,255,0.1)', color: '#fff', fontSize: 14, fontFamily: fontBody, marginBottom: 4 }} />
               {email && !isValidEmail(email) && (
-                <p style={{ fontSize: 11, color: 'rgba(239,68,68,0.8)', marginBottom: 6, fontFamily: 'monospace' }}>Please enter a valid email address</p>
+                <p style={{ fontSize: 11, color: 'rgba(239,68,68,0.8)', marginBottom: 6, fontFamily: fontMono }}>Please enter a valid email address</p>
               )}
               <div style={{ marginBottom: isValidEmail(email) ? 10 : 0 }} />
 
               <button onClick={initPaystack} disabled={payLoading || !isValidEmail(email)}
-                style={{ width: '100%', padding: '15px 0', background: isValidEmail(email) ? 'linear-gradient(135deg,#CFAF6E,#B8942A)' : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 11, fontSize: 15, fontWeight: 700, color: '#fff', cursor: isValidEmail(email) ? 'pointer' : 'not-allowed', fontFamily: "'Syne',sans-serif", boxShadow: isValidEmail(email) ? '0 4px 12px rgba(207,175,110,0.3)' : 'none' }}>
-                {payLoading ? '⏳ Opening payment...' : `🔓 Unlock ${tierName} — ₦${tierPriceNaira.toLocaleString()}`}
+                style={{ width: '100%', padding: '15px 0', background: isValidEmail(email) ? `linear-gradient(135deg,${theme.gold},#A8863F)` : 'rgba(255,255,255,0.1)', border: 'none', borderRadius: 4, fontSize: 15, fontWeight: 700, color: '#fff', cursor: isValidEmail(email) ? 'pointer' : 'not-allowed', fontFamily: fontBody, boxShadow: isValidEmail(email) ? `0 4px 12px ${theme.gold}4D` : 'none' }}>
+                {payLoading ? 'Opening payment...' : `Unseal ${tierName} — ₦${tierPriceNaira.toLocaleString()}`}
               </button>
-              <p style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 10, fontFamily: 'monospace' }}>
+              <p style={{ textAlign: 'center', fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 10, fontFamily: fontMono }}>
                 Secure via Paystack · Card · Bank transfer · USSD
               </p>
             </div>
@@ -867,24 +925,24 @@ export default function AgentPage() {
 
           {/* Payment Success + Export */}
           {paid && (
-            <div className="appear card" style={{ padding: '1.5rem', marginBottom: '1rem', border: '1px solid #BBF7D0', background: '#F0FDF4' }}>
+            <div className="appear card" style={{ padding: '1.5rem', marginBottom: '1rem', border: `1px solid ${theme.registryGreen}4D`, background: `${theme.registryGreen}0F` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '1rem' }}>
-                <div style={{ width: 40, height: 40, background: '#22C55E', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                <div style={{ width: 40, height: 40, background: theme.registryGreen, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3"><path d="M20 6L9 17l-5-5"/></svg>
                 </div>
                 <div>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#065F46' }}>Payment successful!</div>
-                  <div style={{ fontSize: 12, color: '#059669' }}>Full report unlocked. We've also sent a copy to <strong>{email}</strong></div>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: theme.ink }}>Payment successful — case file sealed</div>
+                  <div style={{ fontSize: 12, color: theme.inkSoft }}>Full report unlocked. We've also sent a copy to <strong>{email}</strong></div>
                 </div>
               </div>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button onClick={openReport}
-                  style={{ flex: 1, padding: '12px 0', background: '#0A5C45', border: 'none', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  style={{ flex: 1, padding: '12px 0', background: theme.inkGreen, border: 'none', borderRadius: 4, fontSize: 13, fontWeight: 600, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: fontBody }}>
                   📄 Download PDF Report
                 </button>
                 <a href={`https://wa.me/?text=${encodeURIComponent(`LagosLandCheck Report\n\nLocation: ${result.location_label}\nRisk: ${result.overall}\n\nVerify at lagoslandcheck.com`)}`}
                   target="_blank" rel="noopener noreferrer"
-                  style={{ flex: 1, padding: '12px 0', background: '#25D366', borderRadius: 10, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6 }}>
+                  style={{ flex: 1, padding: '12px 0', background: '#25D366', borderRadius: 4, fontSize: 13, fontWeight: 600, color: '#fff', textDecoration: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontFamily: fontBody }}>
                   💬 Share on WhatsApp
                 </a>
               </div>
@@ -895,23 +953,23 @@ export default function AgentPage() {
           <div className="appear card" style={{ overflow: 'hidden' }}>
             <button onClick={() => setChatOpen(!chatOpen)}
               style={{ width: '100%', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 32, height: 32, background: '#0A5C45', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: 32, height: 32, background: '#0F2B22', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
               </div>
               <div style={{ flex: 1, textAlign: 'left' }}>
-                <div style={{ fontSize: 13, fontWeight: 600, color: '#111827' }}>Ask the Lagos Land Agent</div>
-                <div style={{ fontSize: 11, color: '#6B7280' }}>Follow-up questions about this land</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: '#171B14' }}>Ask the Lagos Land Agent</div>
+                <div style={{ fontSize: 11, color: '#6B6A5E' }}>Follow-up questions about this land</div>
               </div>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2" style={{ transform: chatOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}><path d="M9 18l6-6-6-6"/></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6B6A5E" strokeWidth="2" style={{ transform: chatOpen ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }}><path d="M9 18l6-6-6-6"/></svg>
             </button>
             {chatOpen && (
-              <div style={{ borderTop: '1px solid #F3F4F6', padding: '0 14px 14px' }}>
+              <div style={{ borderTop: '1px solid #EDE6D3', padding: '0 14px 14px' }}>
                 <div style={{ maxHeight: 260, overflowY: 'auto', padding: '10px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {chatMessages.length === 0 && (
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 7, paddingTop: 8 }}>
                       {['What does the gazette result mean?', 'Is this area safe?', 'What should I ask my lawyer?'].map(q => (
                         <button key={q} onClick={() => setChatInput(q)}
-                          style={{ fontSize: 12, padding: '7px 12px', borderRadius: 16, border: '1px solid #E5E7EB', background: '#F9FAFB', color: '#374151', cursor: 'pointer' }}>
+                          style={{ fontSize: 12, padding: '7px 12px', borderRadius: 16, border: '1px solid rgba(23,27,20,0.14)', background: '#EDE6D3', color: '#171B14', cursor: 'pointer' }}>
                           {q}
                         </button>
                       ))}
@@ -919,30 +977,30 @@ export default function AgentPage() {
                   )}
                   {chatMessages.map((m, i) => (
                     <div key={i} style={{ display: 'flex', flexDirection: m.role === 'user' ? 'row-reverse' : 'row' }}>
-                      <div style={{ maxWidth: '82%', padding: '9px 13px', borderRadius: m.role === 'user' ? '16px 4px 16px 16px' : '4px 16px 16px 16px', background: m.role === 'user' ? '#0A5C45' : '#F9FAFB', color: m.role === 'user' ? '#fff' : '#111827', fontSize: 13, lineHeight: 1.6, border: m.role === 'agent' ? '1px solid #E5E7EB' : 'none' }}>
+                      <div style={{ maxWidth: '82%', padding: '9px 13px', borderRadius: m.role === 'user' ? '16px 4px 16px 16px' : '4px 16px 16px 16px', background: m.role === 'user' ? '#0F2B22' : '#EDE6D3', color: m.role === 'user' ? '#fff' : '#171B14', fontSize: 13, lineHeight: 1.6, border: m.role === 'agent' ? '1px solid rgba(23,27,20,0.14)' : 'none' }}>
                         {m.text}
                       </div>
                     </div>
                   ))}
                   {chatLoading && (
-                    <div style={{ padding: '9px 13px', borderRadius: '4px 16px 16px 16px', background: '#F9FAFB', border: '1px solid #E5E7EB', fontSize: 12, color: '#9CA3AF', fontFamily: 'monospace', display: 'inline-block' }}>Thinking...</div>
+                    <div style={{ padding: '9px 13px', borderRadius: '4px 16px 16px 16px', background: '#EDE6D3', border: '1px solid rgba(23,27,20,0.14)', fontSize: 12, color: '#6B6A5E', fontFamily: fontMono, display: 'inline-block' }}>Thinking...</div>
                   )}
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <input value={chatInput} onChange={e => setChatInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && sendChat()}
                     placeholder="Ask about this land..."
-                    style={{ flex: 1, padding: '10px 12px', border: '1px solid #E5E7EB', borderRadius: 10, fontSize: 13, fontFamily: "'Syne',sans-serif" }} />
+                    style={{ flex: 1, padding: '10px 12px', border: '1px solid rgba(23,27,20,0.14)', borderRadius: 10, fontSize: 13, fontFamily: fontBody }} />
                   <button onClick={sendChat} disabled={chatLoading || !chatInput.trim()}
-                    style={{ width: 38, height: 38, borderRadius: '50%', background: chatInput.trim() ? '#0A5C45' : '#E5E7EB', border: 'none', cursor: chatInput.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={chatInput.trim() ? '#fff' : '#9CA3AF'} strokeWidth="2"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
+                    style={{ width: 38, height: 38, borderRadius: '50%', background: chatInput.trim() ? '#0F2B22' : 'rgba(23,27,20,0.14)', border: 'none', cursor: chatInput.trim() ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={chatInput.trim() ? '#fff' : '#6B6A5E'} strokeWidth="2"><path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/></svg>
                   </button>
                 </div>
               </div>
             )}
           </div>
 
-          <p style={{ textAlign: 'center', fontSize: 10, color: '#9CA3AF', marginTop: '1.25rem', fontFamily: 'monospace', lineHeight: 1.8 }}>
+          <p style={{ textAlign: 'center', fontSize: 10, color: '#6B6A5E', marginTop: '1.25rem', fontFamily: fontMono, lineHeight: 1.8 }}>
             Pre-screening only · Not legal advice<br/>
             Always engage a licensed Lagos property lawyer for final due diligence
           </p>

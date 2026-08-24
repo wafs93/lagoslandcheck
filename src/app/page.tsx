@@ -54,10 +54,10 @@ const IconAlert = ({ size = 20, color = 'currentColor' }) => (
 
 // ─── Shield Logo ──────────────────────────────────────────────────────────────
 const Logo = ({ variant = 'dark' }: { variant?: 'dark' | 'light' }) => {
-  const stroke = variant === 'dark' ? '#CFAF6E' : '#07382C'
-  const fill = variant === 'dark' ? 'rgba(207,175,110,0.1)' : 'rgba(7,56,44,0.07)'
-  const textColor = variant === 'dark' ? '#fff' : '#07382C'
-  const subColor = '#CFAF6E'
+  const stroke = variant === 'dark' ? '#C7A65C' : '#0A1F19'
+  const fill = variant === 'dark' ? 'rgba(199,166,92,0.1)' : 'rgba(15,43,34,0.07)'
+  const textColor = variant === 'dark' ? '#fff' : '#0A1F19'
+  const subColor = '#C7A65C'
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
       <svg width="34" height="34" viewBox="0 0 44 44" fill="none" style={{ flexShrink: 0 }}>
@@ -65,8 +65,8 @@ const Logo = ({ variant = 'dark' }: { variant?: 'dark' | 'light' }) => {
         <path d="M13 22 L19.5 29 L31 16" stroke={stroke} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
       </svg>
       <div>
-        <div style={{ fontFamily: "'Syne',sans-serif", fontWeight: 800, fontSize: 15, color: textColor, letterSpacing: '-0.3px', lineHeight: 1.1 }}>LagosLandCheck</div>
-        <div style={{ fontFamily: 'monospace', fontSize: 7, color: subColor, letterSpacing: '2px', marginTop: 1 }}>VERIFICATION INTELLIGENCE</div>
+        <div style={{ fontFamily: "'Fraunces',serif", fontWeight: 600, fontSize: 15, color: textColor, letterSpacing: '-0.3px', lineHeight: 1.1 }}>LagosLandCheck</div>
+        <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 7, color: subColor, letterSpacing: '2px', marginTop: 1 }}>VERIFICATION INTELLIGENCE</div>
       </div>
     </div>
   )
@@ -76,12 +76,12 @@ const Logo = ({ variant = 'dark' }: { variant?: 'dark' | 'light' }) => {
 const VerificationMockup = () => {
   const [step, setStep] = useState(0)
   const checks = [
-    { id: 'sat', label: 'Satellite imagery', status: 'clear', icon: <IconSatellite size={13} color="#15803D" /> },
-    { id: 'gaz', label: 'Gazette acquisition', status: 'clear', icon: <IconScroll size={13} color="#15803D" /> },
-    { id: 'fld', label: 'Flood & drainage', status: 'caution', icon: <IconWater size={13} color="#B45309" /> },
-    { id: 'lit', label: 'Court litigation', status: 'clear', icon: <IconScales size={13} color="#15803D" /> },
-    { id: 'luc', label: 'Land Use Charge', status: 'clear', icon: <IconShield size={13} color="#15803D" /> },
-    { id: 'frz', label: 'Fraud zone alert', status: 'clear', icon: <IconAlert size={13} color="#15803D" /> },
+    { id: 'sat', label: 'Satellite imagery', status: 'clear', icon: <IconSatellite size={13} color="#3E8A63" /> },
+    { id: 'gaz', label: 'Gazette acquisition', status: 'clear', icon: <IconScroll size={13} color="#3E8A63" /> },
+    { id: 'fld', label: 'Flood & drainage', status: 'caution', icon: <IconWater size={13} color="#C25B45" /> },
+    { id: 'lit', label: 'Court litigation', status: 'clear', icon: <IconScales size={13} color="#3E8A63" /> },
+    { id: 'luc', label: 'Land Use Charge', status: 'clear', icon: <IconShield size={13} color="#3E8A63" /> },
+    { id: 'frz', label: 'Fraud zone alert', status: 'clear', icon: <IconAlert size={13} color="#3E8A63" /> },
   ]
 
   useEffect(() => {
@@ -96,34 +96,34 @@ const VerificationMockup = () => {
     <div style={{
       background: '#fff',
       borderRadius: 16,
-      border: '1px solid #E5E7EB',
+      border: '1px solid #DDD5C0',
       boxShadow: '0 24px 64px rgba(0,0,0,0.12), 0 4px 16px rgba(0,0,0,0.06)',
       overflow: 'hidden',
       width: '100%',
       maxWidth: 420,
     }}>
       {/* Header bar */}
-      <div style={{ background: '#07382C', padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <div style={{ background: '#0A1F19', padding: '12px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: isComplete ? '#4ADE80' : '#CFAF6E', transition: 'background 0.3s' }} />
-          <span style={{ fontFamily: 'monospace', fontSize: 11, color: '#fff', letterSpacing: '1px' }}>
+          <div style={{ width: 8, height: 8, borderRadius: '50%', background: isComplete ? '#7FBE9C' : '#C7A65C', transition: 'background 0.3s' }} />
+          <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: '#fff', letterSpacing: '1px' }}>
             {isComplete ? 'REPORT READY' : 'ANALYZING...'}
           </span>
         </div>
-        <span style={{ fontFamily: 'monospace', fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>LLC-DEMO</span>
+        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>LLC-DEMO</span>
       </div>
 
       {/* Map area */}
       <div style={{
         height: 160,
-        background: '#0A1F18',
+        background: '#0A1F19',
         position: 'relative',
         overflow: 'hidden',
       }}>
         {/* Grid overlay */}
         <div style={{
           position: 'absolute', inset: 0,
-          backgroundImage: 'linear-gradient(rgba(207,175,110,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(207,175,110,0.06) 1px,transparent 1px)',
+          backgroundImage: 'linear-gradient(rgba(199,166,92,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(199,166,92,0.06) 1px,transparent 1px)',
           backgroundSize: '32px 32px',
         }} />
         {/* Land parcels */}
@@ -137,8 +137,8 @@ const VerificationMockup = () => {
         ].map((p, i) => (
           <div key={i} style={{
             position: 'absolute', top: p.t, left: p.l, width: p.w, height: p.h,
-            border: `1.5px solid ${p.active ? '#CFAF6E' : 'rgba(207,175,110,0.2)'}`,
-            background: p.active ? 'rgba(207,175,110,0.12)' : 'transparent',
+            border: `1.5px solid ${p.active ? '#C7A65C' : 'rgba(199,166,92,0.2)'}`,
+            background: p.active ? 'rgba(199,166,92,0.12)' : 'transparent',
             transition: 'all 0.5s',
           }} />
         ))}
@@ -146,65 +146,66 @@ const VerificationMockup = () => {
         <div style={{
           position: 'absolute', top: '33%', left: '26%',
           width: 10, height: 10, borderRadius: '50%',
-          background: '#EF4444',
-          boxShadow: '0 0 0 4px rgba(239,68,68,0.25)',
+          background: '#C25B45',
+          boxShadow: '0 0 0 4px rgba(194,91,69,0.25)',
         }} />
         {/* Coord tag */}
         <div style={{
           position: 'absolute', top: 8, left: 8,
           background: 'rgba(0,0,0,0.7)', borderRadius: 4,
           padding: '3px 8px',
-          fontFamily: 'monospace', fontSize: 9, color: '#fff', letterSpacing: '0.5px',
+          fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: '#fff', letterSpacing: '0.5px',
         }}>6.5244°N · 3.3792°E · Z20</div>
         {/* Scanning line */}
         <div style={{
           position: 'absolute', left: 0, right: 0,
           height: 1,
-          background: 'linear-gradient(90deg,transparent,rgba(207,175,110,0.5),transparent)',
+          background: 'linear-gradient(90deg,transparent,rgba(199,166,92,0.5),transparent)',
           top: `${(step / (checks.length + 2)) * 100}%`,
           transition: 'top 0.8s linear',
         }} />
       </div>
 
       {/* Location row */}
-      <div style={{ padding: '12px 16px', borderBottom: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: 8 }}>
-        <IconMapPin size={14} color="#07382C" />
-        <span style={{ fontSize: 12, color: '#374151', flex: 1, fontFamily: "'Inter',sans-serif" }}>Plot 14, Thomas Estate, Ajah, Lagos</span>
-        <span style={{ fontFamily: 'monospace', fontSize: 9, color: '#9CA3AF', letterSpacing: '1px' }}>VERIFIED</span>
+      <div style={{ padding: '12px 16px', borderBottom: '1px solid #EDE6D3', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <IconMapPin size={14} color="#0A1F19" />
+        <span style={{ fontSize: 12, color: '#171B14', flex: 1, fontFamily: "'IBM Plex Sans',sans-serif" }}>Plot 14, Thomas Estate, Ajah, Lagos</span>
+        <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: '#6B6A5E', letterSpacing: '1px' }}>VERIFIED</span>
       </div>
 
       {/* Checks list */}
       <div style={{ padding: '12px 16px' }}>
-        <div style={{ fontFamily: 'monospace', fontSize: 9, color: '#9CA3AF', letterSpacing: '1.5px', marginBottom: 10 }}>6-POINT VERIFICATION</div>
+        <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: '#6B6A5E', letterSpacing: '1.5px', marginBottom: 10 }}>6-POINT VERIFICATION</div>
         {checks.map((c, i) => {
           const done = i < completedChecks.length
           const active = i === completedChecks.length && !isComplete
-          const statusColor = c.status === 'clear' ? '#15803D' : '#B45309'
-          const statusBg = c.status === 'clear' ? '#DCFCE7' : '#FEF3C7'
+          const statusColor = c.status === 'clear' ? '#3E8A63' : '#C25B45'
+          const statusBg = c.status === 'clear' ? '#E1EFE6' : '#F6E2DC'
           return (
             <div key={c.id} style={{
               display: 'flex', alignItems: 'center', gap: 10,
-              padding: '7px 0', borderBottom: i < 5 ? '1px solid #F9FAFB' : 'none',
+              padding: '7px 0', borderBottom: i < 5 ? '1px solid #FAF7EE' : 'none',
               opacity: done || active ? 1 : 0.35,
               transition: 'opacity 0.4s',
             }}>
               <div style={{
                 width: 24, height: 24, borderRadius: 6,
-                background: done ? statusBg : active ? '#EFF6FF' : '#F9FAFB',
+                background: done ? statusBg : active ? '#E2EEF3' : '#FAF7EE',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 flexShrink: 0, transition: 'background 0.3s',
               }}>
                 {done ? c.icon : active
-                  ? <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#3B82F6', animation: 'pulse 1s infinite' }} />
-                  : <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#D1D5DB' }} />
+                  ? <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#6FA8C7', animation: 'pulse 1s infinite' }} />
+                  : <div style={{ width: 6, height: 6, borderRadius: '50%', background: '#C9C2AC' }} />
                 }
               </div>
-              <span style={{ flex: 1, fontSize: 12, color: '#374151', fontFamily: "'Inter',sans-serif" }}>{c.label}</span>
+              <span style={{ flex: 1, fontSize: 12, color: '#171B14', fontFamily: "'IBM Plex Sans',sans-serif" }}>{c.label}</span>
               {done && (
                 <span style={{
-                  fontFamily: 'monospace', fontSize: 9, fontWeight: 700,
-                  padding: '2px 7px', borderRadius: 4,
-                  background: statusBg, color: statusColor,
+                  fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, fontWeight: 700,
+                  padding: '2px 7px', borderRadius: 3,
+                  border: `1.5px solid ${statusColor}`, color: statusColor,
+                  transform: 'rotate(-4deg)', display: 'inline-block', letterSpacing: '0.5px',
                 }}>{c.status === 'clear' ? 'CLEAR' : 'CAUTION'}</span>
               )}
             </div>
@@ -213,11 +214,11 @@ const VerificationMockup = () => {
         {isComplete && (
           <div style={{
             marginTop: 12, padding: '10px 14px',
-            background: 'linear-gradient(135deg,#0A5C45,#07382C)',
+            background: 'linear-gradient(135deg,#0F2B22,#0A1F19)',
             borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8,
           }}>
-            <IconCheck size={14} color="#4ADE80" />
-            <span style={{ fontSize: 12, color: '#fff', fontWeight: 600, fontFamily: "'Inter',sans-serif" }}>Report ready · ₦5,000 to unlock</span>
+            <IconCheck size={14} color="#7FBE9C" />
+            <span style={{ fontSize: 12, color: '#fff', fontWeight: 600, fontFamily: "'IBM Plex Sans',sans-serif" }}>Report ready · ₦5,000 to unseal</span>
           </div>
         )}
       </div>
@@ -231,9 +232,9 @@ export default function Home() {
   const [mobileNav, setMobileNav] = useState(false)
 
   return (
-    <div style={{ fontFamily: "'Inter',-apple-system,sans-serif", background: '#fff', color: '#111827' }}>
+    <div style={{ fontFamily: "'IBM Plex Sans',-apple-system,sans-serif", background: '#fff', color: '#171B14' }}>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@400;500;600&family=Lora:ital,wght@0,600;1,600&family=JetBrains+Mono:wght@400;500&display=swap');
+        @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
         *{box-sizing:border-box;margin:0;padding:0}
         @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
         @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
@@ -248,7 +249,7 @@ export default function Home() {
         .hover-lift{transition:transform .2s,box-shadow .2s}
         .hover-lift:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(0,0,0,0.12)!important}
         .check-row{transition:background .15s}
-        .check-row:hover{background:#F9FAFB}
+        .check-row:hover{background:#FAF7EE}
         @media(max-width:900px){
           .hero-grid{grid-template-columns:1fr!important}
           .mock-hide{display:none!important}
@@ -288,7 +289,7 @@ export default function Home() {
       {/* ── NAV ─────────────────────────────────────────── */}
       <nav style={{
         position: 'sticky', top: 0, zIndex: 100,
-        background: '#07382C',
+        background: '#0A1F19',
         borderBottom: '1px solid rgba(255,255,255,0.06)',
         padding: '0 2rem',
         height: 60,
@@ -306,12 +307,12 @@ export default function Home() {
           <a href="/contact" className="nav-link" style={{ fontSize: 13 }}>Contact</a>
           <a href="/agent" style={{
             padding: '7px 16px',
-            background: 'rgba(207,175,110,0.15)',
-            border: '1px solid rgba(207,175,110,0.3)',
-            borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#CFAF6E',
+            background: 'rgba(199,166,92,0.15)',
+            border: '1px solid rgba(199,166,92,0.3)',
+            borderRadius: 8, fontSize: 13, fontWeight: 600, color: '#C7A65C',
             display: 'flex', alignItems: 'center', gap: 7,
           }}>
-            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ADE80', animation: 'blink 1.5s infinite', display: 'inline-block' }} />
+            <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7FBE9C', animation: 'blink 1.5s infinite', display: 'inline-block' }} />
             Run a check
           </a>
         </div>
@@ -319,7 +320,7 @@ export default function Home() {
 
       {/* ── HERO ─────────────────────────────────────────── */}
       <section className="hero-pad" style={{
-        background: '#07382C',
+        background: '#0A1F19',
         padding: '80px 2rem 100px',
         position: 'relative',
         overflow: 'hidden',
@@ -327,7 +328,7 @@ export default function Home() {
         {/* Subtle dot grid — not glowing blobs */}
         <div style={{
           position: 'absolute', inset: 0,
-          backgroundImage: 'radial-gradient(rgba(207,175,110,0.12) 1px, transparent 1px)',
+          backgroundImage: 'radial-gradient(rgba(199,166,92,0.12) 1px, transparent 1px)',
           backgroundSize: '28px 28px',
           pointerEvents: 'none',
         }} />
@@ -344,18 +345,18 @@ export default function Home() {
           <div>
             <div className="a1" style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
-              background: 'rgba(207,175,110,0.12)',
-              border: '1px solid rgba(207,175,110,0.2)',
+              background: 'rgba(199,166,92,0.12)',
+              border: '1px solid rgba(199,166,92,0.2)',
               borderRadius: 40, padding: '5px 14px',
-              fontFamily: 'monospace', fontSize: 11, color: '#CFAF6E', letterSpacing: '1.5px',
+              fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: '#C7A65C', letterSpacing: '1.5px',
               marginBottom: 24,
             }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#4ADE80', animation: 'pulse 2s infinite', display: 'inline-block' }} />
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#7FBE9C', animation: 'pulse 2s infinite', display: 'inline-block' }} />
               AI-POWERED LAND VERIFICATION · LAGOS
             </div>
 
             <h1 className="a2 hero-headline" style={{
-              fontFamily: "'Lora',serif",
+              fontFamily: "'Fraunces',serif",
               fontSize: 'clamp(36px,4.5vw,62px)',
               fontWeight: 600,
               lineHeight: 1.08,
@@ -364,7 +365,7 @@ export default function Home() {
               marginBottom: 20,
             }}>
               Verify land<br />before you pay.<br />
-              <span style={{ color: '#CFAF6E', fontStyle: 'italic' }}>Every time.</span>
+              <span style={{ color: '#C7A65C', fontStyle: 'italic' }}>Every time.</span>
             </h1>
 
             <p className="a3 hero-sub" style={{
@@ -377,10 +378,10 @@ export default function Home() {
             <div className="a4" style={{ display: 'flex', gap: 12, flexWrap: 'wrap', marginBottom: 40 }}>
               <a href="/agent" style={{
                 padding: '13px 28px',
-                background: 'linear-gradient(135deg,#CFAF6E,#B8942A)',
+                background: 'linear-gradient(135deg,#C7A65C,#A8863F)',
                 borderRadius: 10, fontSize: 15, fontWeight: 700,
                 color: '#fff', display: 'inline-flex', alignItems: 'center', gap: 8,
-                boxShadow: '0 4px 14px rgba(207,175,110,0.25)',
+                boxShadow: '0 4px 14px rgba(199,166,92,0.25)',
                 transition: 'all .2s',
               }}>
                 Verify a land — free
@@ -409,8 +410,8 @@ export default function Home() {
                 { n: '₦5,000', l: 'Full report' },
               ].map(s => (
                 <div key={s.n}>
-                  <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 17, fontWeight: 800, color: '#CFAF6E', lineHeight: 1.1 }}>{s.n}</div>
-                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2, fontFamily: 'monospace', letterSpacing: '0.5px' }}>{s.l}</div>
+                  <div style={{ fontFamily: "'Fraunces',serif", fontSize: 17, fontWeight: 800, color: '#C7A65C', lineHeight: 1.1 }}>{s.n}</div>
+                  <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2, fontFamily: "'IBM Plex Mono',monospace", letterSpacing: '0.5px' }}>{s.l}</div>
                 </div>
               ))}
             </div>
@@ -424,13 +425,13 @@ export default function Home() {
       </section>
 
       {/* ── CREDIBILITY STRIP ─────────────────────────────── */}
-      <section className="cred-strip" style={{ background: '#F9FAFB', borderBottom: '1px solid #F3F4F6', padding: '18px 2rem' }}>
+      <section className="cred-strip" style={{ background: '#FAF7EE', borderBottom: '1px solid #EDE6D3', padding: '18px 2rem' }}>
         <div style={{
           maxWidth: 1100, margin: '0 auto',
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           flexWrap: 'wrap', gap: '1rem',
         }}>
-          <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#9CA3AF', letterSpacing: '1px' }}>
+          <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: '#6B6A5E', letterSpacing: '1px' }}>
             TRUSTED BY DIASPORA BUYERS IN UK · US · CANADA · GERMANY
           </div>
           <div style={{ display: 'flex', gap: '2rem', alignItems: 'center' }}>
@@ -441,8 +442,8 @@ export default function Home() {
               ['Resend', 'delivery'],
             ].map(([n, l]) => (
               <div key={n} style={{ textAlign: 'center' }}>
-                <div style={{ fontSize: 12, fontWeight: 600, color: '#374151' }}>{n}</div>
-                <div style={{ fontSize: 10, color: '#9CA3AF', fontFamily: 'monospace' }}>{l}</div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: '#171B14' }}>{n}</div>
+                <div style={{ fontSize: 10, color: '#6B6A5E', fontFamily: "'IBM Plex Mono',monospace" }}>{l}</div>
               </div>
             ))}
           </div>
@@ -453,10 +454,10 @@ export default function Home() {
       <section id="how-it-works" className="section-pad" style={{ padding: '100px 2rem', background: '#fff' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ marginBottom: 64 }}>
-            <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#0A5C45', letterSpacing: '2px', marginBottom: 12 }}>HOW IT WORKS</div>
-            <h2 style={{ fontFamily: "'Lora',serif", fontSize: 'clamp(28px,3.5vw,42px)', fontWeight: 600, letterSpacing: '-0.8px', lineHeight: 1.15, maxWidth: 560 }}>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: '#0F2B22', letterSpacing: '2px', marginBottom: 12 }}>HOW IT WORKS</div>
+            <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: 'clamp(28px,3.5vw,42px)', fontWeight: 600, letterSpacing: '-0.8px', lineHeight: 1.15, maxWidth: 560 }}>
               Three steps. Under two minutes.<br />
-              <span style={{ color: '#0A5C45' }}>No site visit required.</span>
+              <span style={{ color: '#0F2B22' }}>No site visit required.</span>
             </h2>
           </div>
 
@@ -466,45 +467,45 @@ export default function Home() {
                 n: '01',
                 title: 'Submit the location',
                 desc: 'Paste a Google Maps link, type an address, or enter GPS coordinates. Our AI agent extracts the coordinate automatically — any format works.',
-                icon: <IconMapPin size={20} color="#0A5C45" />,
+                icon: <IconMapPin size={20} color="#0F2B22" />,
               },
               {
                 n: '02',
                 title: 'AI runs 6 checks',
                 desc: 'Satellite imagery, gazette records, flood maps, court cause lists, LUC status, and fraud zone alerts — all queried simultaneously against live Lagos State databases.',
-                icon: <IconSatellite size={20} color="#0A5C45" />,
+                icon: <IconSatellite size={20} color="#0F2B22" />,
               },
               {
                 n: '03',
                 title: 'Receive your report',
-                desc: 'Get a CLEAR, CAUTION, or CRITICAL verdict with full evidence for each check. Unlock the 3-page PDF intelligence dossier for ₦5,000 and share with your lawyer.',
-                icon: <IconScroll size={20} color="#0A5C45" />,
+                desc: 'Get a CLEAR, CAUTION, or CRITICAL verdict with full evidence for each check. Unseal the 3-page PDF intelligence dossier for ₦5,000 and share with your lawyer.',
+                icon: <IconScroll size={20} color="#0F2B22" />,
               },
             ].map((s, i) => (
               <div key={s.n} style={{
                 padding: '36px 40px',
-                background: i === 1 ? '#07382C' : '#F9FAFB',
+                background: i === 1 ? '#0A1F19' : '#FAF7EE',
                 position: 'relative',
               }}>
                 <div style={{
                   position: 'absolute', top: 28, right: 32,
-                  fontFamily: 'monospace', fontSize: 36, fontWeight: 700,
-                  color: i === 1 ? 'rgba(207,175,110,0.1)' : 'rgba(0,0,0,0.04)',
+                  fontFamily: "'IBM Plex Mono',monospace", fontSize: 36, fontWeight: 700,
+                  color: i === 1 ? 'rgba(199,166,92,0.1)' : 'rgba(0,0,0,0.04)',
                 }}>{s.n}</div>
                 <div style={{
                   width: 40, height: 40, borderRadius: 10,
-                  background: i === 1 ? 'rgba(207,175,110,0.15)' : '#EEF9F4',
+                  background: i === 1 ? 'rgba(199,166,92,0.15)' : '#E1EFE6',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   marginBottom: 20,
                 }}>
-                  {React.cloneElement(s.icon, { color: i === 1 ? '#CFAF6E' : '#0A5C45' })}
+                  {React.cloneElement(s.icon, { color: i === 1 ? '#C7A65C' : '#0F2B22' })}
                 </div>
                 <h3 style={{
-                  fontFamily: "'Syne',sans-serif", fontSize: 18, fontWeight: 700,
-                  color: i === 1 ? '#fff' : '#111827',
+                  fontFamily: "'Fraunces',serif", fontSize: 18, fontWeight: 700,
+                  color: i === 1 ? '#fff' : '#171B14',
                   marginBottom: 10, letterSpacing: '-0.2px',
                 }}>{s.title}</h3>
-                <p style={{ fontSize: 14, color: i === 1 ? 'rgba(255,255,255,0.6)' : '#6B7280', lineHeight: 1.75 }}>{s.desc}</p>
+                <p style={{ fontSize: 14, color: i === 1 ? 'rgba(255,255,255,0.6)' : '#6B6A5E', lineHeight: 1.75 }}>{s.desc}</p>
               </div>
             ))}
           </div>
@@ -512,16 +513,16 @@ export default function Home() {
       </section>
 
       {/* ── 6 CHECKS ─────────────────────────────────────── */}
-      <section id="checks" className="section-pad" style={{ padding: '100px 2rem', background: '#F9FAFB' }}>
+      <section id="checks" className="section-pad" style={{ padding: '100px 2rem', background: '#FAF7EE' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: 56, flexWrap: 'wrap', gap: 20 }}>
             <div>
-              <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#D64545', letterSpacing: '2px', marginBottom: 12 }}>6 RISKS WE DETECT</div>
-              <h2 style={{ fontFamily: "'Lora',serif", fontSize: 'clamp(26px,3vw,40px)', fontWeight: 600, letterSpacing: '-0.8px', lineHeight: 1.15 }}>
+              <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: '#C25B45', letterSpacing: '2px', marginBottom: 12 }}>6 RISKS WE DETECT</div>
+              <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: 'clamp(26px,3vw,40px)', fontWeight: 600, letterSpacing: '-0.8px', lineHeight: 1.15 }}>
                 Every fraud pattern<br />in Lagos — checked.
               </h2>
             </div>
-            <p style={{ fontSize: 14, color: '#6B7280', maxWidth: 340, lineHeight: 1.75 }}>
+            <p style={{ fontSize: 14, color: '#6B6A5E', maxWidth: 340, lineHeight: 1.75 }}>
               Each check targets a real fraud pattern that has cost Lagos buyers millions. All six run simultaneously.
             </p>
           </div>
@@ -532,43 +533,43 @@ export default function Home() {
                 n: '01', check: 'Gazette & acquisition',
                 risk: '"Government has already claimed this land"',
                 desc: "The most common Lagos fraud. Sellers market gazette-acquired land knowing buyers won't check. We query every Lagos State Gazette within 500m.",
-                tag: 'CRITICAL', tagColor: '#991B1B', tagBg: '#FEE2E2',
-                icon: <IconScroll size={18} color="#991B1B" />,
+                tag: 'CRITICAL', tagColor: '#C25B45', tagBg: '#F6E2DC',
+                icon: <IconScroll size={18} color="#C25B45" />,
               },
               {
                 n: '02', check: 'Fraud zone & Omo Onile',
                 risk: '"This land already has community disputes"',
                 desc: 'Active fraud zones and known community agitation areas. Buying here without knowing means you may face extortion after purchase.',
-                tag: 'HIGH RISK', tagColor: '#991B1B', tagBg: '#FEE2E2',
-                icon: <IconAlert size={18} color="#991B1B" />,
+                tag: 'HIGH RISK', tagColor: '#C25B45', tagBg: '#F6E2DC',
+                icon: <IconAlert size={18} color="#C25B45" />,
               },
               {
                 n: '03', check: 'Flood & drainage risk',
                 risk: '"This land floods every rainy season"',
                 desc: 'NIMET flood shapefiles and Lagos drainage master plan. Many cheap plots are seasonal floodplains disguised as dry land.',
-                tag: 'GIS CHECK', tagColor: '#065F46', tagBg: '#D1FAE5',
-                icon: <IconWater size={18} color="#065F46" />,
+                tag: 'GIS CHECK', tagColor: '#3E8A63', tagBg: '#E1EFE6',
+                icon: <IconWater size={18} color="#3E8A63" />,
               },
               {
                 n: '04', check: 'Court litigation',
                 risk: '"Someone is suing over this land right now"',
                 desc: 'Active disputes in Lagos State Judiciary cause lists. A court order can invalidate your purchase after you have paid.',
-                tag: 'LEGAL', tagColor: '#92400E', tagBg: '#FEF3C7',
-                icon: <IconScales size={18} color="#92400E" />,
+                tag: 'LEGAL', tagColor: '#C25B45', tagBg: '#F6E2DC',
+                icon: <IconScales size={18} color="#C25B45" />,
               },
               {
                 n: '05', check: 'Land Use Charge status',
                 risk: '"Outstanding debt is attached to this land"',
                 desc: 'Unpaid LUC transfers to the new buyer on purchase. A 4-year payment gap means you inherit a tax debt at acquisition.',
-                tag: 'LUC', tagColor: '#065F46', tagBg: '#D1FAE5',
-                icon: <IconShield size={18} color="#065F46" />,
+                tag: 'LUC', tagColor: '#3E8A63', tagBg: '#E1EFE6',
+                icon: <IconShield size={18} color="#3E8A63" />,
               },
               {
                 n: '06', check: 'Satellite imagery',
                 risk: '"There is already a building on this plot"',
                 desc: "GPT-4o Vision analyses the exact parcel at zoom 20. We've caught sellers marketing occupied land with existing structures as empty plots.",
-                tag: 'AI VISION', tagColor: '#1D4ED8', tagBg: '#DBEAFE',
-                icon: <IconSatellite size={18} color="#1D4ED8" />,
+                tag: 'AI VISION', tagColor: '#3D7996', tagBg: '#E2EEF3',
+                icon: <IconSatellite size={18} color="#3D7996" />,
               },
             ].map(c => (
               <div key={c.n} className="check-row hover-lift" style={{
@@ -582,16 +583,16 @@ export default function Home() {
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>{c.icon}</div>
                   <span style={{
-                    fontFamily: 'monospace', fontSize: 9, fontWeight: 700,
+                    fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, fontWeight: 700,
                     padding: '3px 8px', borderRadius: 4,
                     background: c.tagBg, color: c.tagColor,
                   }}>{c.tag}</span>
                 </div>
-                <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#9CA3AF', letterSpacing: '0.5px', marginBottom: 6 }}>{c.check}</div>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: '#111827', marginBottom: 10, lineHeight: 1.35, fontFamily: "'Syne',sans-serif" }}>
+                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: '#6B6A5E', letterSpacing: '0.5px', marginBottom: 6 }}>{c.check}</div>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: '#171B14', marginBottom: 10, lineHeight: 1.35, fontFamily: "'Fraunces',serif" }}>
                   {c.risk}
                 </h3>
-                <p style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.7 }}>{c.desc}</p>
+                <p style={{ fontSize: 13, color: '#6B6A5E', lineHeight: 1.7 }}>{c.desc}</p>
               </div>
             ))}
           </div>
@@ -599,18 +600,18 @@ export default function Home() {
       </section>
 
       {/* ── DIASPORA SECTION ─────────────────────────────── */}
-      <section className="section-pad" style={{ background: '#07382C', padding: '100px 2rem' }}>
+      <section className="section-pad" style={{ background: '#0A1F19', padding: '100px 2rem' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div className="diaspora-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '5rem', alignItems: 'center' }}>
             <div>
-              <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#CFAF6E', letterSpacing: '2px', marginBottom: 16 }}>FOR DIASPORA BUYERS</div>
+              <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: '#C7A65C', letterSpacing: '2px', marginBottom: 16 }}>FOR DIASPORA BUYERS</div>
               <h2 style={{
-                fontFamily: "'Lora',serif",
+                fontFamily: "'Fraunces',serif",
                 fontSize: 'clamp(28px,3.5vw,44px)', fontWeight: 600,
                 color: '#fff', letterSpacing: '-1px', lineHeight: 1.1, marginBottom: 20,
               }}>
                 Buying from abroad?<br />
-                <em style={{ color: '#CFAF6E' }}>Built for you.</em>
+                <em style={{ color: '#C7A65C' }}>Built for you.</em>
               </h2>
               <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.6)', lineHeight: 1.8, marginBottom: 32 }}>
                 You cannot visit. You do not know who to trust. The agent is pressuring you. Your family says just buy it. We built LagosLandCheck for exactly this situation.
@@ -625,11 +626,11 @@ export default function Home() {
                   <div key={t} style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     <div style={{
                       width: 20, height: 20, borderRadius: '50%',
-                      background: 'rgba(207,175,110,0.15)',
+                      background: 'rgba(199,166,92,0.15)',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       flexShrink: 0, marginTop: 1,
                     }}>
-                      <IconCheck size={10} color="#CFAF6E" />
+                      <IconCheck size={10} color="#C7A65C" />
                     </div>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 2 }}>{t}</div>
@@ -641,7 +642,7 @@ export default function Home() {
               <a href="/agent" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 8,
                 padding: '13px 28px',
-                background: 'linear-gradient(135deg,#CFAF6E,#B8942A)',
+                background: 'linear-gradient(135deg,#C7A65C,#A8863F)',
                 borderRadius: 10, fontSize: 15, fontWeight: 700, color: '#fff',
               }}>
                 Verify my land now
@@ -664,8 +665,8 @@ export default function Home() {
                   display: 'flex', gap: 20, alignItems: 'flex-start',
                 }}>
                   <div style={{
-                    fontFamily: "'Lora',serif", fontSize: 24, fontWeight: 600,
-                    color: '#CFAF6E', flexShrink: 0, minWidth: 80,
+                    fontFamily: "'Fraunces',serif", fontSize: 24, fontWeight: 600,
+                    color: '#C7A65C', flexShrink: 0, minWidth: 80,
                   }}>{s.stat}</div>
                   <div>
                     <div style={{ fontSize: 14, fontWeight: 600, color: '#fff', marginBottom: 3 }}>{s.label}</div>
@@ -681,29 +682,29 @@ export default function Home() {
       {/* ── PRICING ──────────────────────────────────────── */}
       <section id="pricing" className="section-pad" style={{ padding: '100px 2rem', background: '#fff' }}>
         <div style={{ maxWidth: 680, margin: '0 auto', textAlign: 'center' }}>
-          <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#0A5C45', letterSpacing: '2px', marginBottom: 16 }}>PRICING</div>
-          <h2 style={{ fontFamily: "'Lora',serif", fontSize: 'clamp(28px,3.5vw,42px)', fontWeight: 600, letterSpacing: '-0.8px', marginBottom: 14 }}>
+          <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: '#0F2B22', letterSpacing: '2px', marginBottom: 16 }}>PRICING</div>
+          <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: 'clamp(28px,3.5vw,42px)', fontWeight: 600, letterSpacing: '-0.8px', marginBottom: 14 }}>
             ₦5,000 today.<br />Or millions lost tomorrow.
           </h2>
-          <p style={{ fontSize: 15, color: '#6B7280', lineHeight: 1.75, marginBottom: 56 }}>
+          <p style={{ fontSize: 15, color: '#6B6A5E', lineHeight: 1.75, marginBottom: 56 }}>
             The average Lagos land fraud loss is ₦8–₦50 million. A full LagosLandCheck report costs less than a taxi ride.
           </p>
 
           <div style={{
-            background: '#F9FAFB', border: '1px solid #E5E7EB',
+            background: '#FAF7EE', border: '1px solid #DDD5C0',
             borderRadius: 16, padding: '40px', textAlign: 'left',
             boxShadow: '0 4px 24px rgba(0,0,0,0.04)',
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32, flexWrap: 'wrap', gap: 12 }}>
               <div>
-                <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#9CA3AF', letterSpacing: '1px', marginBottom: 6 }}>FULL INTELLIGENCE REPORT</div>
-                <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 36, fontWeight: 800, color: '#0A5C45', lineHeight: 1 }}>₦5,000</div>
-                <div style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>One-time · No account · No subscription</div>
+                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: '#6B6A5E', letterSpacing: '1px', marginBottom: 6 }}>FULL INTELLIGENCE REPORT</div>
+                <div style={{ fontFamily: "'Fraunces',serif", fontSize: 36, fontWeight: 800, color: '#0F2B22', lineHeight: 1 }}>₦5,000</div>
+                <div style={{ fontSize: 13, color: '#6B6A5E', marginTop: 4 }}>One-time · No account · No subscription</div>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <div style={{ fontFamily: 'monospace', fontSize: 10, color: '#9CA3AF', letterSpacing: '1px', marginBottom: 6 }}>FREE PREVIEW</div>
-                <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 20, fontWeight: 700, color: '#374151' }}>₦0</div>
-                <div style={{ fontSize: 13, color: '#9CA3AF', marginTop: 4 }}>Risk verdict + summaries</div>
+                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: '#6B6A5E', letterSpacing: '1px', marginBottom: 6 }}>FREE PREVIEW</div>
+                <div style={{ fontFamily: "'Fraunces',serif", fontSize: 20, fontWeight: 700, color: '#171B14' }}>₦0</div>
+                <div style={{ fontSize: 13, color: '#6B6A5E', marginTop: 4 }}>Risk verdict + summaries</div>
               </div>
             </div>
 
@@ -721,12 +722,12 @@ export default function Home() {
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '5px 0' }}>
                   <div style={{
                     width: 16, height: 16, borderRadius: '50%', flexShrink: 0,
-                    background: free ? '#D1FAE5' : 'rgba(207,175,110,0.15)',
+                    background: free ? '#E1EFE6' : 'rgba(199,166,92,0.15)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                   }}>
-                    <IconCheck size={9} color={free ? '#065F46' : '#CFAF6E'} />
+                    <IconCheck size={9} color={free ? '#3E8A63' : '#C7A65C'} />
                   </div>
-                  <span style={{ fontSize: 13, color: '#374151', lineHeight: 1.4 }}>{feat as string}</span>
+                  <span style={{ fontSize: 13, color: '#171B14', lineHeight: 1.4 }}>{feat as string}</span>
                 </div>
               ))}
             </div>
@@ -734,15 +735,15 @@ export default function Home() {
             <a href="/agent" style={{
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               padding: '15px 0',
-              background: 'linear-gradient(135deg,#CFAF6E,#B8942A)',
+              background: 'linear-gradient(135deg,#C7A65C,#A8863F)',
               borderRadius: 10, fontSize: 15, fontWeight: 700, color: '#fff',
-              boxShadow: '0 4px 12px rgba(207,175,110,0.25)',
+              boxShadow: '0 4px 12px rgba(199,166,92,0.25)',
             }}>
-              Start free · Unlock for ₦5,000
+              Start free · Unseal for ₦5,000
               <IconArrow size={14} color="#fff" />
             </a>
 
-            <p style={{ textAlign: 'center', fontSize: 12, color: '#9CA3AF', marginTop: 14, fontFamily: 'monospace' }}>
+            <p style={{ textAlign: 'center', fontSize: 12, color: '#6B6A5E', marginTop: 14, fontFamily: "'IBM Plex Mono',monospace" }}>
               Secure via Paystack · Card · Bank transfer · USSD
             </p>
           </div>
@@ -750,11 +751,11 @@ export default function Home() {
       </section>
 
       {/* ── CONSEQUENCES ─────────────────────────────────── */}
-      <section style={{ background: '#F9FAFB', padding: '100px 2rem' }}>
+      <section style={{ background: '#FAF7EE', padding: '100px 2rem' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: 56 }}>
-            <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#D64545', letterSpacing: '2px', marginBottom: 12 }}>REAL CONSEQUENCES</div>
-            <h2 style={{ fontFamily: "'Lora',serif", fontSize: 'clamp(26px,3vw,40px)', fontWeight: 600, letterSpacing: '-0.8px', lineHeight: 1.2 }}>
+            <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: '#C25B45', letterSpacing: '2px', marginBottom: 12 }}>REAL CONSEQUENCES</div>
+            <h2 style={{ fontFamily: "'Fraunces',serif", fontSize: 'clamp(26px,3vw,40px)', fontWeight: 600, letterSpacing: '-0.8px', lineHeight: 1.2 }}>
               What happens when you<br />skip verification?
             </h2>
           </div>
@@ -762,25 +763,25 @@ export default function Home() {
           <div className="consequences-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(260px,1fr))', gap: 2, marginBottom: 32 }}>
             {[
               {
-                icon: <IconScroll size={22} color="#991B1B" />,
+                icon: <IconScroll size={22} color="#C25B45" />,
                 title: 'You buy gazette-acquired land',
                 desc: "The government acquired the land for road expansion. The seller knew. The government demolishes your structure with no compensation.",
                 cost: 'Average loss: ₦8M–₦45M',
               },
               {
-                icon: <IconAlert size={22} color="#991B1B" />,
+                icon: <IconAlert size={22} color="#C25B45" />,
                 title: 'Omo Onile demand levies',
                 desc: 'Community members arrive after purchase demanding "community levies." When you refuse, construction is halted by force.',
                 cost: 'Average loss: ₦2M–₦15M',
               },
               {
-                icon: <IconWater size={22} color="#92400E" />,
+                icon: <IconWater size={22} color="#C25B45" />,
                 title: 'You build on a floodplain',
                 desc: 'The land looked dry in January. By June, your foundation is underwater. A seasonal floodplain mapped by NIMET for years.',
                 cost: 'Average loss: ₦5M–₦20M',
               },
               {
-                icon: <IconScales size={22} color="#991B1B" />,
+                icon: <IconScales size={22} color="#C25B45" />,
                 title: 'Someone else already owns it',
                 desc: 'The seller showed the same C of O to 4 buyers. One gets the land. The other 3 get nothing.',
                 cost: 'Average loss: Full purchase price',
@@ -788,29 +789,29 @@ export default function Home() {
             ].map(s => (
               <div key={s.title} style={{
                 background: '#fff', padding: '28px 28px',
-                borderTop: '3px solid #FEE2E2',
+                borderTop: '3px solid #F6E2DC',
               }}>
                 <div style={{
                   width: 40, height: 40, borderRadius: 8,
-                  background: '#FEF2F2',
+                  background: '#F6E2DC',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   marginBottom: 16,
                 }}>{s.icon}</div>
-                <h3 style={{ fontSize: 15, fontWeight: 700, color: '#111827', marginBottom: 10, fontFamily: "'Syne',sans-serif" }}>{s.title}</h3>
-                <p style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.7, marginBottom: 14 }}>{s.desc}</p>
-                <div style={{ fontFamily: 'monospace', fontSize: 11, color: '#991B1B', fontWeight: 700 }}>{s.cost}</div>
+                <h3 style={{ fontSize: 15, fontWeight: 700, color: '#171B14', marginBottom: 10, fontFamily: "'Fraunces',serif" }}>{s.title}</h3>
+                <p style={{ fontSize: 13, color: '#6B6A5E', lineHeight: 1.7, marginBottom: 14 }}>{s.desc}</p>
+                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 11, color: '#C25B45', fontWeight: 700 }}>{s.cost}</div>
               </div>
             ))}
           </div>
 
           {/* CTA band */}
           <div className="cta-band" style={{
-            background: '#07382C', borderRadius: 12, padding: '36px 44px',
+            background: '#0A1F19', borderRadius: 12, padding: '36px 44px',
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
             flexWrap: 'wrap', gap: 20,
           }}>
             <div>
-              <h3 style={{ fontFamily: "'Lora',serif", fontSize: 22, color: '#fff', fontWeight: 600, marginBottom: 6 }}>
+              <h3 style={{ fontFamily: "'Fraunces',serif", fontSize: 22, color: '#fff', fontWeight: 600, marginBottom: 6 }}>
                 LagosLandCheck catches all of these — in 2 minutes.
               </h3>
               <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.55)' }}>
@@ -819,7 +820,7 @@ export default function Home() {
             </div>
             <a href="/agent" style={{
               padding: '13px 28px',
-              background: 'linear-gradient(135deg,#CFAF6E,#B8942A)',
+              background: 'linear-gradient(135deg,#C7A65C,#A8863F)',
               borderRadius: 10, fontSize: 15, fontWeight: 700, color: '#fff',
               display: 'inline-flex', alignItems: 'center', gap: 8, flexShrink: 0,
             }}>
@@ -831,27 +832,27 @@ export default function Home() {
       </section>
 
       {/* ── TRUST SIGNALS ────────────────────────────────── */}
-      <section style={{ background: '#fff', padding: '80px 2rem', borderTop: '1px solid #F3F4F6' }}>
+      <section style={{ background: '#fff', padding: '80px 2rem', borderTop: '1px solid #EDE6D3' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div className="trust-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(240px,1fr))', gap: 2 }}>
             {[
-              { icon: <IconShield size={18} color="#0A5C45" />, title: 'No documents stored', desc: 'No survey plans or personal documents are stored permanently. Your query is processed and deleted.' },
-              { icon: <IconScroll size={18} color="#0A5C45" />, title: 'Encrypted in transit', desc: 'All requests are encrypted. We never share your property search data with third parties.' },
-              { icon: <IconScales size={18} color="#0A5C45" />, title: 'Pre-screening, not legal advice', desc: 'Our reports are intelligence tools. Always engage a licensed Lagos property lawyer for final due diligence.' },
-              { icon: <IconSatellite size={18} color="#0A5C45" />, title: 'Built for diaspora buyers', desc: 'Trusted by Nigerians in the UK, US, Canada, and Germany who cannot visit land before buying.' },
+              { icon: <IconShield size={18} color="#0F2B22" />, title: 'No documents stored', desc: 'No survey plans or personal documents are stored permanently. Your query is processed and deleted.' },
+              { icon: <IconScroll size={18} color="#0F2B22" />, title: 'Encrypted in transit', desc: 'All requests are encrypted. We never share your property search data with third parties.' },
+              { icon: <IconScales size={18} color="#0F2B22" />, title: 'Pre-screening, not legal advice', desc: 'Our reports are intelligence tools. Always engage a licensed Lagos property lawyer for final due diligence.' },
+              { icon: <IconSatellite size={18} color="#0F2B22" />, title: 'Built for diaspora buyers', desc: 'Trusted by Nigerians in the UK, US, Canada, and Germany who cannot visit land before buying.' },
             ].map(t => (
               <div key={t.title} style={{
                 padding: '28px 28px',
-                background: '#F9FAFB',
+                background: '#FAF7EE',
                 display: 'flex', gap: 14, alignItems: 'flex-start',
               }}>
                 <div style={{
-                  width: 36, height: 36, borderRadius: 8, background: '#EEF9F4',
+                  width: 36, height: 36, borderRadius: 8, background: '#E1EFE6',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                 }}>{t.icon}</div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600, color: '#111827', marginBottom: 5, fontFamily: "'Syne',sans-serif" }}>{t.title}</div>
-                  <div style={{ fontSize: 13, color: '#6B7280', lineHeight: 1.65 }}>{t.desc}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600, color: '#171B14', marginBottom: 5, fontFamily: "'Fraunces',serif" }}>{t.title}</div>
+                  <div style={{ fontSize: 13, color: '#6B6A5E', lineHeight: 1.65 }}>{t.desc}</div>
                 </div>
               </div>
             ))}
@@ -860,15 +861,15 @@ export default function Home() {
       </section>
 
       {/* ── FINAL CTA ────────────────────────────────────── */}
-      <section style={{ background: '#07382C', padding: '100px 2rem', textAlign: 'center' }}>
+      <section style={{ background: '#0A1F19', padding: '100px 2rem', textAlign: 'center' }}>
         <div style={{ maxWidth: 580, margin: '0 auto' }}>
           <h2 style={{
-            fontFamily: "'Lora',serif",
+            fontFamily: "'Fraunces',serif",
             fontSize: 'clamp(30px,4vw,48px)', fontWeight: 600,
             color: '#fff', letterSpacing: '-1px', lineHeight: 1.1, marginBottom: 16,
           }}>
             Verify before you pay.<br />
-            <em style={{ color: '#CFAF6E' }}>Every single time.</em>
+            <em style={{ color: '#C7A65C' }}>Every single time.</em>
           </h2>
           <p style={{ fontSize: 15, color: 'rgba(255,255,255,0.5)', lineHeight: 1.75, marginBottom: 36 }}>
             Takes 2 minutes. Works from anywhere. No account needed to start.
@@ -876,9 +877,9 @@ export default function Home() {
           <a href="/agent" style={{
             display: 'inline-flex', alignItems: 'center', gap: 10,
             padding: '15px 40px',
-            background: 'linear-gradient(135deg,#CFAF6E,#B8942A)',
+            background: 'linear-gradient(135deg,#C7A65C,#A8863F)',
             borderRadius: 10, fontSize: 16, fontWeight: 700, color: '#fff',
-            marginBottom: 24, boxShadow: '0 4px 16px rgba(207,175,110,0.25)',
+            marginBottom: 24, boxShadow: '0 4px 16px rgba(199,166,92,0.25)',
           }}>
             Check a land now — free
             <IconArrow size={16} color="#fff" />
@@ -886,7 +887,7 @@ export default function Home() {
           <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', justifyContent: 'center', flexWrap: 'wrap' }}>
             {['No account needed', 'Works from abroad', 'Results in 2 minutes'].map(t => (
               <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: 'rgba(255,255,255,0.35)' }}>
-                <IconCheck size={12} color="#4ADE80" />{t}
+                <IconCheck size={12} color="#7FBE9C" />{t}
               </div>
             ))}
           </div>
@@ -894,23 +895,23 @@ export default function Home() {
       </section>
 
       {/* ── FOOTER ──────────────────────────────────────── */}
-      <footer style={{ background: '#040E09', padding: '56px 2rem 32px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+      <footer style={{ background: '#0A1F19', padding: '56px 2rem 32px', borderTop: '1px solid rgba(255,255,255,0.04)' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div className="footer-cols" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '3rem', marginBottom: '2.5rem' }}>
             <div>
               <div style={{ marginBottom: 14 }}><Logo variant="dark" /></div>
-              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', lineHeight: 1.7, maxWidth: 280, fontFamily: "'Inter',sans-serif" }}>
+              <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.3)', lineHeight: 1.7, maxWidth: 280, fontFamily: "'IBM Plex Sans',sans-serif" }}>
                 AI-powered land pre-screening intelligence for Lagos, Nigeria. Protecting buyers from fraud since 2026.
               </p>
             </div>
             <div>
-              <div style={{ fontFamily: 'monospace', fontSize: 10, color: 'rgba(255,255,255,0.2)', letterSpacing: '1px', marginBottom: 14 }}>PRODUCT</div>
+              <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,0.2)', letterSpacing: '1px', marginBottom: 14 }}>PRODUCT</div>
               {[['How it works', '#how-it-works'], ['Run a check', '/agent'], ['Pricing', '#pricing']].map(([l, h]) => (
                 <a key={l} href={h} style={{ display: 'block', fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 9, textDecoration: 'none' }}>{l}</a>
               ))}
             </div>
             <div>
-              <div style={{ fontFamily: 'monospace', fontSize: 10, color: 'rgba(255,255,255,0.2)', letterSpacing: '1px', marginBottom: 14 }}>LEGAL</div>
+              <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 10, color: 'rgba(255,255,255,0.2)', letterSpacing: '1px', marginBottom: 14 }}>LEGAL</div>
               {[
                 ['Terms of service', '/terms'],
                 ['Privacy policy', '/privacy'],
@@ -923,11 +924,11 @@ export default function Home() {
             </div>
           </div>
           <div style={{ paddingTop: '1.5rem', borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.18)', fontFamily: 'monospace' }}>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.18)', fontFamily: "'IBM Plex Mono',monospace" }}>
               Pre-screening only — not a substitute for legal due diligence by a licensed Lagos property lawyer.
             </p>
-            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', fontFamily: 'monospace' }}>
-              Designed by <a href="https://lagoslandcheck.com" target="_blank" rel="noopener noreferrer" style={{ color: '#CFAF6E', textDecoration: 'none', fontWeight: 600 }}>Wafs Tech</a>
+            <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.25)', fontFamily: "'IBM Plex Mono',monospace" }}>
+              Designed by <a href="https://lagoslandcheck.com" target="_blank" rel="noopener noreferrer" style={{ color: '#C7A65C', textDecoration: 'none', fontWeight: 600 }}>Wafs Tech</a>
             </p>
           </div>
         </div>
@@ -943,42 +944,42 @@ export default function Home() {
             background: '#fff', borderRadius: 16, maxWidth: 540, width: '100%',
             maxHeight: '90vh', overflowY: 'auto',
           }}>
-            <div style={{ background: 'linear-gradient(135deg,#0A5C45,#07382C)', padding: '18px 22px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div style={{ background: 'linear-gradient(135deg,#0F2B22,#0A1F19)', padding: '18px 22px', borderRadius: '16px 16px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div>
-                <div style={{ fontFamily: 'monospace', fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '1px', marginBottom: 3 }}>SAMPLE REPORT · DEMO COORDINATE</div>
-                <div style={{ fontFamily: "'Lora',serif", fontSize: 17, color: '#fff', fontWeight: 600 }}>Plot 14, Thomas Estate, Ajah</div>
+                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: 'rgba(255,255,255,0.4)', letterSpacing: '1px', marginBottom: 3 }}>SAMPLE REPORT · DEMO COORDINATE</div>
+                <div style={{ fontFamily: "'Fraunces',serif", fontSize: 17, color: '#fff', fontWeight: 600 }}>Plot 14, Thomas Estate, Ajah</div>
               </div>
               <button onClick={() => setShowSample(false)} style={{ background: 'rgba(255,255,255,0.12)', border: 'none', borderRadius: 8, width: 32, height: 32, cursor: 'pointer', color: '#fff', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>×</button>
             </div>
             <div style={{ padding: '20px' }}>
-              <div style={{ background: '#FFFBEB', border: '1px solid #FCD34D', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
-                <div style={{ fontFamily: 'monospace', fontSize: 9, color: '#92400E', letterSpacing: '1px', marginBottom: 5 }}>OVERALL VERDICT</div>
-                <div style={{ fontFamily: "'Lora',serif", fontSize: 20, color: '#92400E', fontWeight: 600 }}>Proceed with Caution</div>
-                <div style={{ fontSize: 12, color: '#92400E', marginTop: 4, opacity: 0.8 }}>2 of 6 checks raised concerns</div>
+              <div style={{ background: '#F6E2DC', border: '1px solid #E0AA9B', borderRadius: 10, padding: '14px 18px', marginBottom: 16 }}>
+                <div style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, color: '#C25B45', letterSpacing: '1px', marginBottom: 5 }}>OVERALL VERDICT</div>
+                <div style={{ fontFamily: "'Fraunces',serif", fontSize: 20, color: '#C25B45', fontWeight: 600 }}>Proceed with Caution</div>
+                <div style={{ fontSize: 12, color: '#C25B45', marginTop: 4, opacity: 0.8 }}>2 of 6 checks raised concerns</div>
               </div>
               {[
-                { name: 'Satellite imagery', status: 'caution', summary: 'Building detected — residential structure visible. This is NOT vacant land.', c: '#F59E0B', bg: '#FEF3C7', t: '#92400E', icon: <IconSatellite size={13} color="#F59E0B" /> },
-                { name: 'Gazette acquisition', status: 'caution', summary: 'Gazette Vol. 43 No. 17 (2019) records acquisition 380m from coordinate.', c: '#F59E0B', bg: '#FEF3C7', t: '#92400E', icon: <IconScroll size={13} color="#F59E0B" /> },
-                { name: 'Flood & drainage risk', status: 'clear', summary: 'Low flood risk zone. No primary drainage channel within 30m.', c: '#22C55E', bg: '#D1FAE5', t: '#065F46', icon: <IconWater size={13} color="#22C55E" /> },
-                { name: 'Court litigation', status: 'clear', summary: 'No active cases in published Lagos Judiciary cause lists.', c: '#22C55E', bg: '#D1FAE5', t: '#065F46', icon: <IconScales size={13} color="#22C55E" /> },
-                { name: 'Land Use Charge', status: 'clear', summary: 'LUC payments current. Last payment 2025.', c: '#22C55E', bg: '#D1FAE5', t: '#065F46', icon: <IconShield size={13} color="#22C55E" /> },
-                { name: 'Fraud zone & Omo Onile', status: 'clear', summary: 'No active fraud flags within 500m.', c: '#22C55E', bg: '#D1FAE5', t: '#065F46', icon: <IconAlert size={13} color="#22C55E" /> },
+                { name: 'Satellite imagery', status: 'caution', summary: 'Building detected — residential structure visible. This is NOT vacant land.', c: '#C25B45', bg: '#F6E2DC', t: '#C25B45', icon: <IconSatellite size={13} color="#C25B45" /> },
+                { name: 'Gazette acquisition', status: 'caution', summary: 'Gazette Vol. 43 No. 17 (2019) records acquisition 380m from coordinate.', c: '#C25B45', bg: '#F6E2DC', t: '#C25B45', icon: <IconScroll size={13} color="#C25B45" /> },
+                { name: 'Flood & drainage risk', status: 'clear', summary: 'Low flood risk zone. No primary drainage channel within 30m.', c: '#3E8A63', bg: '#E1EFE6', t: '#3E8A63', icon: <IconWater size={13} color="#3E8A63" /> },
+                { name: 'Court litigation', status: 'clear', summary: 'No active cases in published Lagos Judiciary cause lists.', c: '#3E8A63', bg: '#E1EFE6', t: '#3E8A63', icon: <IconScales size={13} color="#3E8A63" /> },
+                { name: 'Land Use Charge', status: 'clear', summary: 'LUC payments current. Last payment 2025.', c: '#3E8A63', bg: '#E1EFE6', t: '#3E8A63', icon: <IconShield size={13} color="#3E8A63" /> },
+                { name: 'Fraud zone & Omo Onile', status: 'clear', summary: 'No active fraud flags within 500m.', c: '#3E8A63', bg: '#E1EFE6', t: '#3E8A63', icon: <IconAlert size={13} color="#3E8A63" /> },
               ].map(c => (
-                <div key={c.name} style={{ display: 'flex', gap: 10, padding: '10px 0', borderBottom: '.5px solid #F3F4F6', alignItems: 'flex-start' }}>
+                <div key={c.name} style={{ display: 'flex', gap: 10, padding: '10px 0', borderBottom: '.5px solid #EDE6D3', alignItems: 'flex-start' }}>
                   <div style={{ width: 28, height: 28, borderRadius: 6, background: c.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{c.icon}</div>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#111' }}>{c.name}</span>
-                      <span style={{ fontFamily: 'monospace', fontSize: 9, padding: '2px 7px', borderRadius: 4, background: c.bg, color: c.t, fontWeight: 700 }}>{c.status.toUpperCase()}</span>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#171B14' }}>{c.name}</span>
+                      <span style={{ fontFamily: "'IBM Plex Mono',monospace", fontSize: 9, padding: '2px 7px', borderRadius: 3, border: `1.5px solid ${c.t}`, color: c.t, fontWeight: 700, transform: 'rotate(-4deg)', display: 'inline-block', letterSpacing: '0.5px' }}>{c.status.toUpperCase()}</span>
                     </div>
-                    <p style={{ fontSize: 12, color: '#6B7280', lineHeight: 1.55 }}>{c.summary}</p>
+                    <p style={{ fontSize: 12, color: '#6B6A5E', lineHeight: 1.55 }}>{c.summary}</p>
                   </div>
                 </div>
               ))}
-              <div style={{ marginTop: 16, padding: '14px', background: 'rgba(207,175,110,0.06)', borderRadius: 10, border: '1px solid rgba(207,175,110,0.2)', textAlign: 'center' }}>
-                <p style={{ fontSize: 13, color: '#374151', marginBottom: 6 }}>Full details, evidence, and PDF dossier</p>
-                <div style={{ fontFamily: "'Syne',sans-serif", fontSize: 22, fontWeight: 800, color: '#0A5C45', marginBottom: 4 }}>₦5,000</div>
-                <p style={{ fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace' }}>One-time · Secure via Paystack</p>
+              <div style={{ marginTop: 16, padding: '14px', background: 'rgba(199,166,92,0.06)', borderRadius: 10, border: '1px solid rgba(199,166,92,0.2)', textAlign: 'center' }}>
+                <p style={{ fontSize: 13, color: '#171B14', marginBottom: 6 }}>Full details, evidence, and PDF dossier</p>
+                <div style={{ fontFamily: "'Fraunces',serif", fontSize: 22, fontWeight: 800, color: '#0F2B22', marginBottom: 4 }}>₦5,000</div>
+                <p style={{ fontSize: 11, color: '#6B6A5E', fontFamily: "'IBM Plex Mono',monospace" }}>One-time · Secure via Paystack</p>
               </div>
             </div>
           </div>

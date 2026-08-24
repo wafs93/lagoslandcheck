@@ -12,6 +12,7 @@
  */
 
 import { REPORT_PRICE_KOBO, ReportTier } from './payment-signature'
+import { theme } from './theme'
 
 export interface Check {
   id: string
@@ -40,15 +41,12 @@ interface PdfArgs {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  clear: 'CLEAR', caution: 'CAUTION', critical: 'HIGH RISK', locked: 'LOCKED', pending: 'PENDING',
+  clear: 'CLEAR', caution: 'CAUTION', critical: 'HIGH RISK', locked: 'SEALED', pending: 'PENDING',
 }
 
+// Caution and critical intentionally share stamp red; only the label differs.
 const STATUS_COLOR: Record<string, string> = {
-  clear: '#15803D', caution: '#B45309', critical: '#991B1B', locked: '#6B7280', pending: '#1D4ED8',
-}
-
-const STATUS_BG: Record<string, string> = {
-  clear: '#DCFCE7', caution: '#FEF3C7', critical: '#FEE2E2', locked: '#F3F4F6', pending: '#DBEAFE',
+  clear: theme.registryGreen, caution: theme.stampRed, critical: theme.stampRed, locked: theme.inkSoft, pending: theme.lagoonBlue,
 }
 
 function formatManualDate(value: string | null | undefined): string {
@@ -143,16 +141,6 @@ export function computeDisplayVerdict(
   return { level: 'CLEAR', reason: null }
 }
 
-// SVG icons for each check — minimal outlined style
-const CHECK_ICONS: Record<string, string> = {
-  satellite: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 7L17 3M17 3L21 7M17 3V13"/><path d="M3 17L7 21M7 21L11 17M7 21V11"/><circle cx="12" cy="12" r="3"/></svg>`,
-  gazette: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>`,
-  flood: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2C12 2 4 10 4 14a8 8 0 0 0 16 0C20 10 12 2 12 2z"/></svg>`,
-  litigation: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"/><path d="M3 6l3 6c0 1.66 1.34 3 3 3s3-1.34 3-3L9 6"/><path d="M15 6l3 6c0 1.66 1.34 3 3 3s3-1.34 3-3L18 6"/><path d="M3 6h18"/></svg>`,
-  luc: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 2h16v22l-3-2-2 2-2-2-2 2-2-2-3 2V2z"/><line x1="8" y1="8" x2="16" y2="8"/><line x1="8" y1="12" x2="16" y2="12"/><line x1="8" y1="16" x2="12" y2="16"/></svg>`,
-  fraud: `<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
-}
-
 // Shield logo SVG — Option C
 const SHIELD_SVG = (color: string, fill: string) =>
   `<svg width="32" height="32" viewBox="0 0 44 44" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
@@ -182,19 +170,25 @@ export function buildPdfHtml(args: PdfArgs): string {
     manualLucStatus: args.manualLucStatus,
   })
 
+  // Verdict is rendered as a bordered ink-stamp, not a colored banner — a single
+  // color per level drives the stamp border/text, matching the on-screen report.
   const verdictMap = {
-    CLEAR: { label: 'CLEARED', sub: 'No major issues detected across the six automated checks.', color: '#15803D', bg: '#DCFCE7', border: '#86EFAC' },
-    CAUTION: { label: 'PROCEED WITH CAUTION', sub: 'Concerns detected. Do not transfer funds before legal verification is complete.', color: '#B45309', bg: '#FEF3C7', border: '#FCD34D' },
-    CRITICAL: { label: 'DO NOT PROCEED', sub: 'Critical risk flags identified. Strongly advise against this transaction without full legal review.', color: '#991B1B', bg: '#FEE2E2', border: '#FCA5A5' },
+    CLEAR: { label: 'CLEAR', stamp: 'CLEARED', sub: 'No major issues detected across the six automated checks.', color: theme.registryGreen },
+    CAUTION: { label: 'CAUTION', stamp: 'CAUTION', sub: 'Concerns detected. Do not transfer funds before legal verification is complete.', color: theme.stampRed },
+    CRITICAL: { label: 'CRITICAL', stamp: 'CRITICAL', sub: 'Critical risk flags identified. Strongly advise against this transaction without full legal review.', color: theme.stampRed },
     PARTIAL: {
-      label: 'PARTIAL ASSESSMENT',
+      label: 'PARTIAL', stamp: 'PARTIAL',
       sub: displayVerdict.reason === 'verified-pending'
         ? '4 of 6 checks clear. Manual court and Land Use Charge review is in progress — full verdict will be available once complete.'
         : '4 of 6 checks clear. Court litigation and Land Use Charge status require the Verified Report for a complete risk verdict.',
-      color: '#334155', bg: '#F1F5F9', border: '#CBD5E1',
+      color: theme.inkSoft,
     },
   }
   const v = verdictMap[displayVerdict.level]
+  const verdictTitle = displayVerdict.level === 'CLEAR' ? 'Cleared'
+    : displayVerdict.level === 'CAUTION' ? 'Proceed with Caution'
+    : displayVerdict.level === 'CRITICAL' ? 'Do Not Proceed'
+    : 'Partial Assessment'
 
   const cautionCount = checks.filter(c => c.status === 'caution' || c.status === 'critical').length
   const clearCount = checks.filter(c => c.status === 'clear').length
@@ -209,15 +203,15 @@ export function buildPdfHtml(args: PdfArgs): string {
 <meta charset="utf-8">
 <title>LagosLandCheck — ${ref}</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+  @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,500;1,9..144,600&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
   *{box-sizing:border-box;margin:0;padding:0}
-  html,body{font-family:'Inter',-apple-system,Arial,sans-serif;color:#1A2332;background:#fff;font-size:10.5pt;line-height:1.5;-webkit-font-smoothing:antialiased}
+  html,body{font-family:'IBM Plex Sans',-apple-system,Arial,sans-serif;color:#171B14;background:#fff;font-size:10.5pt;line-height:1.5;-webkit-font-smoothing:antialiased}
 
   /* ─────────  COVER PAGE  ───────── */
   .cover{
     height:100vh;min-height:1050px;
-    background:#07382C;color:#fff;
+    background:#0F2B22;color:#fff;
     display:flex;flex-direction:column;
     page-break-after:always;
     position:relative;overflow:hidden
@@ -226,7 +220,7 @@ export function buildPdfHtml(args: PdfArgs): string {
   /* Gold accent stripe top */
   .cover::before{
     content:'';position:absolute;top:0;left:0;right:0;height:5px;
-    background:linear-gradient(90deg,#CFAF6E 0%,#CFAF6E 35%,transparent 35%,transparent 65%,#CFAF6E 65%)
+    background:linear-gradient(90deg,#C7A65C 0%,#C7A65C 35%,transparent 35%,transparent 65%,#C7A65C 65%)
   }
 
   /* Subtle grid texture */
@@ -244,11 +238,11 @@ export function buildPdfHtml(args: PdfArgs): string {
   }
 
   .logo-row{display:flex;align-items:center;gap:12px}
-  .logo-wordmark{font-weight:800;font-size:17pt;letter-spacing:-0.4px}
-  .logo-sub{font-family:'JetBrains Mono',monospace;font-size:8pt;color:#CFAF6E;letter-spacing:2px;margin-top:2px}
+  .logo-wordmark{font-family:'Fraunces',serif;font-weight:600;font-size:17pt;letter-spacing:-0.4px}
+  .logo-sub{font-family:'IBM Plex Mono',monospace;font-size:8pt;color:#C7A65C;letter-spacing:2px;margin-top:2px}
 
-  .meta-block{font-family:'JetBrains Mono',monospace;font-size:8.5pt;color:rgba(255,255,255,.5);text-align:right;line-height:2}
-  .meta-ref{color:#CFAF6E;font-weight:600;font-size:10pt}
+  .meta-block{font-family:'IBM Plex Mono',monospace;font-size:8.5pt;color:rgba(255,255,255,.5);text-align:right;line-height:2}
+  .meta-ref{color:#C7A65C;font-weight:600;font-size:10pt}
 
   /* Cover body — fills the space between header and footer */
   .cover-body{
@@ -258,18 +252,18 @@ export function buildPdfHtml(args: PdfArgs): string {
   }
 
   .doc-eyebrow{
-    font-family:'JetBrains Mono',monospace;font-size:9pt;
-    color:#CFAF6E;letter-spacing:3px;
+    font-family:'IBM Plex Mono',monospace;font-size:9pt;
+    color:#C7A65C;letter-spacing:3px;
     margin-bottom:20px;
     display:flex;align-items:center;gap:10px
   }
-  .doc-eyebrow::before{content:'';display:inline-block;width:20px;height:1.5px;background:#CFAF6E;opacity:0.6}
+  .doc-eyebrow::before{content:'';display:inline-block;width:20px;height:1.5px;background:#C7A65C;opacity:0.6}
 
   .doc-title{
-    font-size:38pt;font-weight:800;line-height:1.05;
-    letter-spacing:-2px;margin-bottom:12px;max-width:640px
+    font-family:'Fraunces',serif;font-size:38pt;font-weight:600;line-height:1.05;
+    letter-spacing:-1px;margin-bottom:12px;max-width:640px
   }
-  .doc-title-accent{color:#CFAF6E;font-style:italic}
+  .doc-title-accent{color:#C7A65C;font-style:italic}
 
   .doc-sub{
     font-size:13pt;color:rgba(255,255,255,.55);
@@ -277,25 +271,36 @@ export function buildPdfHtml(args: PdfArgs): string {
     margin-bottom:40px
   }
 
-  /* Large verdict block */
+  /* Large verdict block — bordered ink-stamp, not a colored banner */
   .verdict-hero{
-    padding:28px 36px;
-    background:${v.bg};
-    border-radius:8px;
-    border-left:5px solid ${v.color};
+    display:flex;align-items:center;gap:24px;
+    padding:24px 32px;
+    background:rgba(255,255,255,.04);
+    border:1px solid rgba(255,255,255,.14);
+    border-radius:4px;
     margin-bottom:36px;
     max-width:600px
   }
+  .verdict-stamp{
+    width:88px;height:88px;border-radius:50%;flex-shrink:0;
+    border:3px solid ${v.color};color:${v.color};
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    transform:rotate(-8deg);
+    font-family:'IBM Plex Mono',monospace;text-transform:uppercase
+  }
+  .verdict-stamp-llc{font-size:6.5pt;letter-spacing:2px;opacity:.75}
+  .verdict-stamp-label{font-size:12pt;font-weight:700;letter-spacing:.5px;line-height:1.15;margin:2px 0}
+  .verdict-stamp-verified{font-size:6pt;letter-spacing:1.5px;opacity:.6}
   .verdict-eyebrow{
-    font-family:'JetBrains Mono',monospace;font-size:8pt;
-    color:${v.color};letter-spacing:2.5px;font-weight:600;
+    font-family:'IBM Plex Mono',monospace;font-size:8pt;
+    color:#C7A65C;letter-spacing:2.5px;font-weight:600;
     margin-bottom:8px
   }
-  .verdict-label{
-    font-size:26pt;font-weight:800;color:${v.color};
-    line-height:1;letter-spacing:-1px;margin-bottom:10px
+  .verdict-title{
+    font-family:'Fraunces',serif;font-size:22pt;font-weight:600;color:#fff;
+    line-height:1.15;letter-spacing:-0.3px;margin-bottom:8px
   }
-  .verdict-sub{font-size:11pt;color:${v.color};opacity:0.85;line-height:1.5}
+  .verdict-sub{font-size:11pt;color:rgba(255,255,255,.7);line-height:1.5}
 
   /* Stats row */
   .stats-row{
@@ -308,8 +313,8 @@ export function buildPdfHtml(args: PdfArgs): string {
     border-right:1px solid rgba(255,255,255,.08)
   }
   .stat:last-child{border-right:none}
-  .stat-n{font-size:24pt;font-weight:800;color:#CFAF6E;line-height:1;margin-bottom:4px}
-  .stat-label{font-family:'JetBrains Mono',monospace;font-size:7.5pt;color:rgba(255,255,255,.35);letter-spacing:1.5px}
+  .stat-n{font-size:24pt;font-weight:800;color:#C7A65C;line-height:1;margin-bottom:4px}
+  .stat-label{font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:rgba(255,255,255,.35);letter-spacing:1.5px}
 
   /* Subject parcel summary on cover */
   .cover-parcel{
@@ -318,14 +323,14 @@ export function buildPdfHtml(args: PdfArgs): string {
     display:flex;gap:40px;flex-wrap:wrap
   }
   .cp-item{display:flex;flex-direction:column;gap:4px}
-  .cp-key{font-family:'JetBrains Mono',monospace;font-size:7.5pt;color:rgba(255,255,255,.3);letter-spacing:1.5px}
+  .cp-key{font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:rgba(255,255,255,.3);letter-spacing:1.5px}
   .cp-val{font-size:11pt;font-weight:600;color:rgba(255,255,255,.85)}
 
   .cover-footer{
     padding:22px 44px;
     border-top:1px solid rgba(255,255,255,.07);
     display:flex;justify-content:space-between;align-items:center;
-    font-family:'JetBrains Mono',monospace;font-size:8pt;
+    font-family:'IBM Plex Mono',monospace;font-size:8pt;
     color:rgba(255,255,255,.3);
     position:relative;z-index:1
   }
@@ -336,137 +341,142 @@ export function buildPdfHtml(args: PdfArgs): string {
 
   .page-head{
     display:flex;align-items:center;justify-content:space-between;
-    padding-bottom:12px;border-bottom:2px solid #07382C;margin-bottom:24px
+    padding-bottom:12px;border-bottom:2px solid #0F2B22;margin-bottom:24px
   }
-  .ph-brand{font-weight:800;font-size:12pt;color:#07382C;letter-spacing:-0.3px}
-  .ph-sub{font-family:'JetBrains Mono',monospace;font-size:7pt;color:#6B7280;letter-spacing:1.5px;margin-top:1px}
-  .ph-meta{font-family:'JetBrains Mono',monospace;font-size:8pt;color:#6B7280;text-align:right;line-height:1.7}
-  .ph-meta strong{color:#1A2332;font-weight:600}
+  .ph-brand{font-family:'Fraunces',serif;font-weight:600;font-size:12pt;color:#0F2B22;letter-spacing:-0.3px}
+  .ph-sub{font-family:'IBM Plex Mono',monospace;font-size:7pt;color:#6B6A5E;letter-spacing:1.5px;margin-top:1px}
+  .ph-meta{font-family:'IBM Plex Mono',monospace;font-size:8pt;color:#6B6A5E;text-align:right;line-height:1.7}
+  .ph-meta strong{color:#171B14;font-weight:600}
 
   .section-tag{
-    font-family:'JetBrains Mono',monospace;font-size:8pt;color:#6B7280;
+    font-family:'IBM Plex Mono',monospace;font-size:8pt;color:#6B6A5E;
     letter-spacing:2px;font-weight:600;margin-bottom:12px;text-transform:uppercase;
     display:flex;align-items:center;gap:8px
   }
-  .section-tag::before{content:'';width:14px;height:1.5px;background:#CFAF6E;display:inline-block}
+  .section-tag::before{content:'';width:14px;height:1.5px;background:#C7A65C;display:inline-block}
 
   /* Satellite image */
   .sat-image{
     width:100%;border-radius:6px;overflow:hidden;
-    margin-bottom:20px;border:1px solid #E5E7EB;
+    margin-bottom:20px;border:1px solid #DDD5C0;
     position:relative
   }
   .sat-image img{width:100%;height:auto;display:block;max-height:300px;object-fit:cover}
   .sat-tag{
     position:absolute;top:8px;left:8px;
     background:rgba(0,0,0,0.7);color:#fff;
-    font-family:'JetBrains Mono',monospace;font-size:7.5pt;
+    font-family:'IBM Plex Mono',monospace;font-size:7.5pt;
     padding:4px 9px;border-radius:4px;letter-spacing:0.5px
   }
 
   /* Subject card */
   .subject-grid{
     display:grid;grid-template-columns:repeat(3,1fr);
-    gap:0;border:1px solid #E5E7EB;border-radius:8px;
+    gap:0;border:1px solid #DDD5C0;border-radius:8px;
     overflow:hidden;margin-bottom:20px
   }
   .subject-cell{
-    padding:12px 16px;border-right:1px solid #E5E7EB;background:#FAFBFC
+    padding:12px 16px;border-right:1px solid #DDD5C0;background:#FAF7EE
   }
   .subject-cell:last-child{border-right:none}
-  .sc-key{font-family:'JetBrains Mono',monospace;font-size:7.5pt;color:#9CA3AF;letter-spacing:1px;margin-bottom:4px}
-  .sc-val{font-size:10pt;color:#1A2332;font-weight:600;line-height:1.3}
+  .sc-key{font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:#6B6A5E;letter-spacing:1px;margin-bottom:4px}
+  .sc-val{font-size:10pt;color:#171B14;font-weight:600;line-height:1.3}
 
-  /* Verdict bar on page 2 */
+  /* Verdict bar on page 2 — small ink-stamp, not a colored banner */
   .verdict-bar{
-    display:flex;align-items:center;gap:16px;
-    padding:16px 20px;
-    background:${v.bg};border-radius:6px;
-    border-left:4px solid ${v.color};margin-bottom:20px
+    display:flex;align-items:center;gap:18px;
+    padding:18px 20px;
+    background:#FAF7EE;border:1px solid #DDD5C0;border-radius:4px;margin-bottom:20px
   }
-  .vb-label{font-size:16pt;font-weight:800;color:${v.color};letter-spacing:-0.5px;line-height:1.1}
-  .vb-sub{font-size:9.5pt;color:${v.color};opacity:0.85;margin-top:3px}
-  .vb-meter{display:flex;gap:4px;margin-left:auto;width:80px}
-  .vb-seg{flex:1;height:5px;border-radius:3px}
+  .vb-stamp{
+    width:56px;height:56px;border-radius:50%;flex-shrink:0;
+    border:2.5px solid ${v.color};color:${v.color};
+    display:flex;align-items:center;justify-content:center;
+    transform:rotate(-8deg);
+    font-family:'IBM Plex Mono',monospace;text-transform:uppercase;
+    font-size:7pt;font-weight:700;letter-spacing:.5px;text-align:center
+  }
+  .vb-label{font-size:15pt;font-weight:600;font-family:'Fraunces',serif;color:#171B14;letter-spacing:-0.3px;line-height:1.15}
+  .vb-sub{font-size:9.5pt;color:#6B6A5E;margin-top:3px}
 
   /* Legal alert */
   .alert{
-    padding:14px 18px;background:#FEF3C7;border:1px solid #FCD34D;
+    padding:14px 18px;background:#F6E2DC;border:1px solid #E0AA9B;
     border-radius:6px;margin-bottom:20px;
     display:flex;gap:12px;align-items:flex-start
   }
   .alert-icon{font-size:16pt;flex-shrink:0;line-height:1}
-  .alert-body{flex:1;font-size:9.5pt;color:#78350F;line-height:1.55}
-  .alert-body strong{color:#7C2D12;display:block;font-size:10pt;margin-bottom:3px}
+  .alert-body{flex:1;font-size:9.5pt;color:#78372B;line-height:1.55}
+  .alert-body strong{color:#5C2A1F;display:block;font-size:10pt;margin-bottom:3px}
 
   /* Summary */
   .summary-block{
-    padding:16px 20px;background:#F7F8FA;
-    border-left:3px solid #07382C;border-radius:0 6px 6px 0;
+    padding:16px 20px;background:#FAF7EE;
+    border-left:3px solid #0F2B22;border-radius:0 6px 6px 0;
     margin-bottom:20px
   }
-  .summary-text{font-size:10pt;color:#1A2332;line-height:1.75}
-  .summary-text strong{color:#07382C;font-weight:700}
+  .summary-text{font-size:10pt;color:#171B14;line-height:1.75}
+  .summary-text strong{color:#0F2B22;font-weight:700}
 
-  /* Verification matrix */
+  /* Verification matrix — evidence-log entries */
   .matrix{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
-  .mcard{border:1px solid #E5E7EB;border-radius:6px;padding:14px 16px;background:#fff;page-break-inside:avoid}
+  .mcard{border:1px solid #DDD5C0;border-radius:2px;padding:14px 16px;background:#fff;page-break-inside:avoid}
   .mcard-head{display:flex;align-items:center;gap:10px;margin-bottom:8px}
-  .mcard-icon{
-    width:32px;height:32px;border-radius:6px;
-    display:flex;align-items:center;justify-content:center;
-    flex-shrink:0
+  .mcard-num{
+    font-family:'IBM Plex Mono',monospace;font-size:10pt;font-weight:600;
+    color:#6B6A5E;flex-shrink:0;width:20px
   }
-  .mcard-name{flex:1;font-size:10.5pt;font-weight:700;color:#1A2332}
+  .mcard-name{flex:1;font-size:10.5pt;font-weight:700;color:#171B14}
   .mcard-pill{
-    font-family:'JetBrains Mono',monospace;font-size:7pt;
-    font-weight:700;padding:3px 8px;border-radius:4px;letter-spacing:1px
+    font-family:'IBM Plex Mono',monospace;font-size:7pt;
+    font-weight:700;padding:3px 8px;border-radius:2px;letter-spacing:1px;
+    border:1.5px solid;background:transparent;transform:rotate(-3deg);display:inline-block
   }
-  .mcard-summary{font-size:9pt;color:#5C6B7A;line-height:1.55;margin-bottom:6px}
-  .mcard-detail{font-size:8.5pt;color:#1A2332;line-height:1.65;padding-top:8px;border-top:1px dashed #E5E7EB}
+  .mcard-summary{font-size:9pt;color:#6B6A5E;line-height:1.55;margin-bottom:6px}
+  .mcard-detail{font-size:8.5pt;color:#171B14;line-height:1.65;padding-top:8px;border-top:1px dashed #DDD5C0}
 
   .matrix-foot{
-    font-family:'JetBrains Mono',monospace;font-size:7.5pt;color:#9CA3AF;
+    font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:#6B6A5E;
     text-align:center;margin-top:12px;padding-top:10px;
-    border-top:1px dashed #E5E7EB;letter-spacing:0.5px
+    border-top:1px dashed #DDD5C0;letter-spacing:0.5px
   }
 
   /* Actions */
-  .action{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid #F1F3F5}
+  .action{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid #FAF7EE}
   .action:last-child{border:none}
   .action-num{
-    font-family:'JetBrains Mono',monospace;font-size:9pt;font-weight:700;
-    color:#fff;background:#07382C;width:24px;height:24px;
+    font-family:'IBM Plex Mono',monospace;font-size:9pt;font-weight:700;
+    color:#fff;background:#0F2B22;width:24px;height:24px;
     border-radius:4px;display:flex;align-items:center;justify-content:center;flex-shrink:0
   }
-  .action-title{font-size:10pt;font-weight:700;color:#1A2332;margin-bottom:2px}
-  .action-desc{font-size:9pt;color:#5C6B7A;line-height:1.55}
+  .action-title{font-size:10pt;font-weight:700;color:#171B14;margin-bottom:2px}
+  .action-desc{font-size:9pt;color:#6B6A5E;line-height:1.55}
 
   /* Auth strip */
   .auth-strip{
-    background:#07382C;color:#fff;padding:14px 20px;
+    background:#0F2B22;color:#fff;padding:14px 20px;
     border-radius:6px;margin-bottom:20px;
     display:flex;align-items:center;justify-content:space-between;gap:20px
   }
-  .auth-label{font-family:'JetBrains Mono',monospace;font-size:7.5pt;color:rgba(255,255,255,.4);letter-spacing:2px;margin-bottom:4px}
-  .auth-val{font-family:'JetBrains Mono',monospace;font-size:12pt;font-weight:600;color:#CFAF6E;letter-spacing:1px}
-  .auth-verify{font-family:'JetBrains Mono',monospace;font-size:8pt;color:rgba(255,255,255,.5);text-align:right}
+  .auth-label{font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:rgba(255,255,255,.4);letter-spacing:2px;margin-bottom:4px}
+  .auth-val{font-family:'IBM Plex Mono',monospace;font-size:12pt;font-weight:600;color:#C7A65C;letter-spacing:1px}
+  .auth-verify{font-family:'IBM Plex Mono',monospace;font-size:8pt;color:rgba(255,255,255,.5);text-align:right}
   .auth-verify strong{color:#fff;display:block;margin-bottom:2px}
 
   /* Disclaimer */
   .disclaimer{
-    padding:14px 16px;border:1px solid #E5E7EB;
-    border-radius:6px;background:#F7F8FA;margin-bottom:16px
+    padding:14px 16px;border:1px solid #DDD5C0;
+    border-radius:6px;background:#FAF7EE;margin-bottom:16px
   }
-  .disc-tag{font-family:'JetBrains Mono',monospace;font-size:7.5pt;color:#1A2332;letter-spacing:1.5px;font-weight:600;margin-bottom:6px}
-  .disc-text{font-size:8.5pt;color:#5C6B7A;line-height:1.65}
+  .disc-tag{font-family:'IBM Plex Mono',monospace;font-size:7.5pt;color:#171B14;letter-spacing:1.5px;font-weight:600;margin-bottom:6px}
+  .disc-text{font-size:8.5pt;color:#6B6A5E;line-height:1.65}
 
   .doc-foot{
-    padding-top:16px;border-top:1px solid #E5E7EB;
+    padding-top:16px;border-top:1px solid #DDD5C0;
     display:flex;justify-content:space-between;align-items:center;
-    font-family:'JetBrains Mono',monospace;font-size:8pt;color:#9CA3AF
+    font-family:'IBM Plex Mono',monospace;font-size:8pt;color:#6B6A5E
   }
-  .doc-foot strong{color:#07382C;font-weight:700}
+  .doc-foot strong{color:#0F2B22;font-weight:700}
 
   @media print{
     @page{margin:0;size:A4}
@@ -483,7 +493,7 @@ export function buildPdfHtml(args: PdfArgs): string {
   <div class="cover-header">
     <div class="logo-row">
       <!-- Shield logo mark -->
-      ${SHIELD_SVG('#CFAF6E', 'rgba(207,175,110,0.12)')}
+      ${SHIELD_SVG('#C7A65C', 'rgba(199,166,92,0.12)')}
       <div>
         <div class="logo-wordmark">LagosLandCheck</div>
         <div class="logo-sub">VERIFICATION INTELLIGENCE</div>
@@ -512,9 +522,16 @@ export function buildPdfHtml(args: PdfArgs): string {
 
     <!-- Large verdict block -->
     <div class="verdict-hero">
-      <div class="verdict-eyebrow">RISK VERDICT</div>
-      <div class="verdict-label">${v.label}</div>
-      <div class="verdict-sub">${v.sub}</div>
+      <div class="verdict-stamp">
+        <div class="verdict-stamp-llc">LLC</div>
+        <div class="verdict-stamp-label">${v.stamp}</div>
+        <div class="verdict-stamp-verified">VERIFIED</div>
+      </div>
+      <div>
+        <div class="verdict-eyebrow">RISK VERDICT</div>
+        <div class="verdict-title">${verdictTitle}</div>
+        <div class="verdict-sub">${v.sub}</div>
+      </div>
     </div>
 
     <!-- Stats row -->
@@ -524,11 +541,11 @@ export function buildPdfHtml(args: PdfArgs): string {
         <div class="stat-label">CHECKS RUN</div>
       </div>
       <div class="stat">
-        <div class="stat-n" style="color:${clearCount > 0 ? '#4ADE80' : '#CFAF6E'}">${clearCount}</div>
+        <div class="stat-n" style="color:${clearCount > 0 ? '#7FBE9C' : '#C7A65C'}">${clearCount}</div>
         <div class="stat-label">CLEARED</div>
       </div>
       <div class="stat">
-        <div class="stat-n" style="color:${cautionCount > 0 ? '#FB923C' : '#4ADE80'}">${cautionCount}</div>
+        <div class="stat-n" style="color:${cautionCount > 0 ? '#E08A73' : '#7FBE9C'}">${cautionCount}</div>
         <div class="stat-label">FLAGGED</div>
       </div>
       <div class="stat">
@@ -598,14 +615,10 @@ export function buildPdfHtml(args: PdfArgs): string {
 
   <div class="section-tag">RISK VERDICT</div>
   <div class="verdict-bar">
+    <div class="vb-stamp">${v.stamp}</div>
     <div style="flex:1">
-      <div class="vb-label">${v.label}</div>
+      <div class="vb-label">${verdictTitle}</div>
       <div class="vb-sub">${v.sub}</div>
-    </div>
-    <div class="vb-meter">
-      <div class="vb-seg" style="background:${displayVerdict.level === 'CLEAR' ? '#15803D' : '#E5E7EB'}"></div>
-      <div class="vb-seg" style="background:${displayVerdict.level === 'CAUTION' ? '#B45309' : '#E5E7EB'}"></div>
-      <div class="vb-seg" style="background:${displayVerdict.level === 'CRITICAL' ? '#991B1B' : '#E5E7EB'}"></div>
     </div>
   </div>
 
@@ -652,21 +665,20 @@ export function buildPdfHtml(args: PdfArgs): string {
     </div>
   </div>
 
-  <div class="section-tag">SIX-POINT VERIFICATION MATRIX</div>
+  <div class="section-tag">EVIDENCE LOG · SIX-POINT VERIFICATION MATRIX</div>
   <div class="matrix">
-    ${checks.map(c => {
+    ${checks.map((c, i) => {
       const status = (c.status || 'caution').toLowerCase()
-      const color = STATUS_COLOR[status] || '#5C6B7A'
-      const bg = STATUS_BG[status] || '#F1F3F5'
+      const color = STATUS_COLOR[status] || theme.inkSoft
       const label = STATUS_LABEL[status] || status.toUpperCase()
-      const icon = CHECK_ICONS[c.id] || CHECK_ICONS.gazette
+      const num = String(i + 1).padStart(2, '0')
 
       return `
       <div class="mcard">
         <div class="mcard-head">
-          <div class="mcard-icon" style="background:${bg};color:${color}">${icon}</div>
+          <div class="mcard-num">${num}</div>
           <div class="mcard-name">${escapeHtml(c.name)}</div>
-          <div class="mcard-pill" style="background:${bg};color:${color}">${label}</div>
+          <div class="mcard-pill" style="border-color:${color};color:${color}">${label}</div>
         </div>
         <div class="mcard-summary">${escapeHtml(c.summary)}</div>
         ${c.details ? `<div class="mcard-detail">${escapeHtml(c.details)}</div>` : ''}
